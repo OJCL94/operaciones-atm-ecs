@@ -3,15 +3,15 @@
 // vive en su propio módulo (security-headers.ts, static-files.ts,
 // api-router.ts). Este archivo solo arma el servidor y conecta las piezas.
 import http from "node:http";
-import { ZodError } from "zod";
 import { config } from "./config";
 import { raw } from "./database";
 import { bootstrap } from "./auth";
-import { DomainError, ensure } from "../lib/domain";
+import { ensure } from "../lib/domain";
 import { applySecurityHeaders } from "./security-headers";
 import { serveStatic } from "./static-files";
 import { routeApi } from "./api-router";
 import { buildApiRequest } from "./api-request";
+import { describeError } from "./error-response";
 
 if (config.demo && !raw.prepare("SELECT id FROM members WHERE demo=0").get())
   await bootstrap(
@@ -43,14 +43,7 @@ const server = http.createServer(async (req, res) => {
     }
     serveStatic(req, res, url, method, vite);
   } catch (e) {
-    const status =
-      e instanceof DomainError ? e.status : e instanceof ZodError ? 422 : 500;
-    const message =
-      e instanceof DomainError
-        ? e.message
-        : e instanceof ZodError
-          ? e.issues[0]?.message
-          : "No se pudo procesar la solicitud.";
+    const { status, message } = describeError(e);
     if (status === 500)
       console.error(
         JSON.stringify({
