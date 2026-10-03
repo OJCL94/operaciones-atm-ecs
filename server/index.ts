@@ -11,6 +11,7 @@ import { DomainError, ensure } from "../lib/domain";
 import { applySecurityHeaders } from "./security-headers";
 import { serveStatic } from "./static-files";
 import { routeApi } from "./api-router";
+import { buildApiRequest } from "./api-request";
 
 if (config.demo && !raw.prepare("SELECT id FROM members WHERE demo=0").get())
   await bootstrap(
@@ -21,17 +22,6 @@ if (config.demo && !raw.prepare("SELECT id FROM members WHERE demo=0").get())
 
 let vite: any;
 
-async function body(req: http.IncomingMessage) {
-  const chunks: Buffer[] = [];
-  let size = 0;
-  for await (const chunk of req) {
-    size += chunk.length;
-    ensure(size <= 65536, "Solicitud demasiado grande.", 413);
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks).toString("utf8");
-}
-
 const server = http.createServer(async (req, res) => {
   const requestId = crypto.randomUUID();
   applySecurityHeaders(res);
@@ -40,32 +30,10 @@ const server = http.createServer(async (req, res) => {
       method = req.method ?? "GET";
     if (url.pathname.startsWith("/api/")) {
       res.setHeader("Cache-Control", "no-store");
-      ensure(["GET", "POST"].includes(method), "Método no permitido.", 405);
-      const headers = new Headers();
-      for (const [k, v] of Object.entries(req.headers))
-        if (v) headers.set(k, Array.isArray(v) ? v.join(",") : v);
-      let text = "";
-      if (method === "POST") {
-        ensure(
-          req.headers.origin === config.origin,
-          "Origen de solicitud no permitido.",
-          403,
-        );
-        ensure(
-          req.headers["content-type"]?.startsWith("application/json"),
-          "Se requiere JSON.",
-          415,
-        );
-        text = await body(req);
-      }
-      const request = new Request(url, {
-        method,
-        headers,
-        ...(method === "POST" ? { body: text } : {}),
-      });
+      const { request, rawBody } = await buildApiRequest(req, url, method);
       const response = await routeApi({
         request,
-        rawBody: text,
+        rawBody,
         remoteAddress: req.socket.remoteAddress ?? "unknown",
       });
       res.statusCode = response.status;
