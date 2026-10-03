@@ -2,7 +2,8 @@
 // comportamiento original del caso "period.create" dentro de Service.execute.
 // Ningún criterio de autorización, validación ni persistencia fue modificado.
 import { z } from "zod";
-import { now, uuid } from "../clock";
+import { uuid } from "../clock";
+import { actorContext } from "./context";
 import { ensure, isManager, indicatorDefinitions } from "../domain";
 import type { HandlerContext, Row } from "../types";
 import { id, optId, short, memo, date, version } from "./shared-schemas";
@@ -11,9 +12,7 @@ export async function periodCreate(
   svc: HandlerContext,
   input: unknown,
 ): Promise<Row> {
-  const a = svc.actor,
-    d = svc.demo,
-    t = now();
+  const { a, d, t } = actorContext(svc);
   svc.research();
   const p = z
     .object({
@@ -43,9 +42,7 @@ export async function measurementCreate(
   svc: HandlerContext,
   input: unknown,
 ): Promise<Row> {
-  const a = svc.actor,
-    d = svc.demo,
-    t = now();
+  const { a, d, t } = actorContext(svc);
   svc.research();
   const p = z
     .object({

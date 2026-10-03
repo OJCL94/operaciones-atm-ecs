@@ -2,7 +2,8 @@
 // comportamiento original del caso "control.create" dentro de Service.execute.
 // Ningún criterio de autorización, validación ni persistencia fue modificado.
 import { z } from "zod";
-import { now, uuid } from "../clock";
+import { uuid } from "../clock";
+import { actorContext } from "./context";
 import { ensure, isManager } from "../domain";
 import type { HandlerContext, Row } from "../types";
 import { id, optId, short, memo, date, version } from "./shared-schemas";
@@ -11,9 +12,7 @@ export async function controlCreate(
   svc: HandlerContext,
   input: unknown,
 ): Promise<Row> {
-  const a = svc.actor,
-    d = svc.demo,
-    t = now();
+  const { a, d, t } = actorContext(svc);
   svc.manage();
   const p = z
     .object({
@@ -40,9 +39,7 @@ export async function controlTransition(
   svc: HandlerContext,
   input: unknown,
 ): Promise<Row> {
-  const a = svc.actor,
-    d = svc.demo,
-    t = now();
+  const { a, d, t } = actorContext(svc);
   const p = z
     .object({
       id,
@@ -83,9 +80,7 @@ export async function goalCreate(
   svc: HandlerContext,
   input: unknown,
 ): Promise<Row> {
-  const a = svc.actor,
-    d = svc.demo,
-    t = now();
+  const { a, d, t } = actorContext(svc);
   svc.manage();
   const p = z
     .object({
@@ -112,9 +107,7 @@ export async function goalEvaluate(
   svc: HandlerContext,
   input: unknown,
 ): Promise<Row> {
-  const a = svc.actor,
-    d = svc.demo,
-    t = now();
+  const { a, d, t } = actorContext(svc);
   svc.manage();
   const p = z
     .object({
