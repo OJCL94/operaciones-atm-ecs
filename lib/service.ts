@@ -25,6 +25,7 @@ const optId = z
   .optional()
   .transform((v) => v || null);
 import { now } from "./clock";
+import { assetSave } from "./handlers/asset";
 const uuid = () => crypto.randomUUID();
 export class Service implements HandlerContext {
   constructor(
@@ -189,49 +190,8 @@ export class Service implements HandlerContext {
       d = this.demo,
       t = now();
     switch (kind) {
-      case "asset.save": {
-        this.manage();
-        const p = z
-          .object({
-            id: optId,
-            version: version.optional(),
-            code: short,
-            serial: short,
-            name: short,
-            model: short,
-            location: short,
-            status: z.enum([
-              "operativo",
-              "mantenimiento",
-              "fuera_servicio",
-              "retirado",
-            ]),
-            notes: z.string().trim().max(3000).default(""),
-          })
-          .parse(input);
-        const { id: aid, version: v, ...data } = p;
-        if (aid) {
-          const old = await this.entity("assets", aid);
-          ensure(v, "Falta versión del activo");
-          await this.update(
-            "assets",
-            old,
-            v,
-            data,
-            "activo_actualizado",
-            JSON.stringify({ antes: old, despues: data }),
-          );
-          return { id: aid };
-        }
-        const aid2 = uuid();
-        await this.create(
-          "assets",
-          { id: aid2, demo: d, ...data, created_at: t },
-          "activo_creado",
-          p.code,
-        );
-        return { id: aid2 };
-      }
+      case "asset.save":
+        return assetSave(this, input);
       case "ticket.create": {
         this.write();
         const p = z
