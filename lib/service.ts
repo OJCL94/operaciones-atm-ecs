@@ -34,6 +34,7 @@ import {
   reviewCreate,
 } from "./handlers/ticket";
 import { activitySave, activityTransition } from "./handlers/activity";
+import { resourceRequire, resourceAllocate } from "./handlers/resource";
 const uuid = () => crypto.randomUUID();
 export class Service implements HandlerContext {
   constructor(
@@ -214,78 +215,10 @@ export class Service implements HandlerContext {
         return activitySave(this, input);
       case "activity.transition":
         return activityTransition(this, input);
-      case "resource.require": {
-        this.manage();
-        const p = z
-          .object({
-            activity_id: id,
-            name: short,
-            quantity: z.number().positive().max(100000),
-            unit: short,
-            required_by: date,
-          })
-          .parse(input);
-        const act = await this.entity("activities", p.activity_id);
-        ensure(
-          ["pendiente", "planificada"].includes(act.status),
-          "Define recursos antes de iniciar la actividad.",
-        );
-        const rid = uuid();
-        await this.create(
-          "resource_requirements",
-          { id: rid, demo: d, ...p },
-          "recurso_requerido",
-          p.name,
-        );
-        return { id: rid };
-      }
-      case "resource.allocate": {
-        this.manage();
-        const p = z
-          .object({
-            requirement_id: id,
-            quantity: z.number().positive().max(100000),
-            note: memo,
-          })
-          .parse(input);
-        const r = await this.entity("resource_requirements", p.requirement_id);
-        const act = await this.entity("activities", r.activity_id);
-        ensure(
-          ["pendiente", "planificada"].includes(act.status),
-          "La actividad ya comenzó o finalizó.",
-        );
-        const allocation = uuid();
-        const out = await this.db.batch([
-          this.stmt(
-            "INSERT INTO resource_allocations(id,requirement_id,quantity,allocated_at,actor_id,note) SELECT ?,?,?,?,?,? WHERE COALESCE((SELECT SUM(quantity) FROM resource_allocations WHERE requirement_id=?),0)+? <= (SELECT quantity FROM resource_requirements WHERE id=?)",
-            [
-              allocation,
-              p.requirement_id,
-              p.quantity,
-              t,
-              a.id,
-              p.note,
-              p.requirement_id,
-              p.quantity,
-              p.requirement_id,
-            ],
-          ),
-          this.event(
-            "activities",
-            act.id,
-            "recurso_asignado",
-            p.note,
-            act.ticket_id,
-            true,
-          ),
-        ]);
-        ensure(
-          out[0].meta.changes === 1,
-          "La cantidad supera el recurso pendiente de asignar.",
-          409,
-        );
-        return { id: allocation };
-      }
+      case "resource.require":
+        return resourceRequire(this, input);
+      case "resource.allocate":
+        return resourceAllocate(this, input);
       case "control.create": {
         this.manage();
         const p = z
