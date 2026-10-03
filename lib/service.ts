@@ -35,6 +35,12 @@ import {
 } from "./handlers/ticket";
 import { activitySave, activityTransition } from "./handlers/activity";
 import { resourceRequire, resourceAllocate } from "./handlers/resource";
+import {
+  controlCreate,
+  controlTransition,
+  goalCreate,
+  goalEvaluate,
+} from "./handlers/control";
 const uuid = () => crypto.randomUUID();
 export class Service implements HandlerContext {
   constructor(
@@ -219,108 +225,14 @@ export class Service implements HandlerContext {
         return resourceRequire(this, input);
       case "resource.allocate":
         return resourceAllocate(this, input);
-      case "control.create": {
-        this.manage();
-        const p = z
-          .object({
-            activity_id: id,
-            title: short,
-            finding: memo,
-            action: memo,
-            owner_id: id,
-            due_at: date,
-          })
-          .parse(input);
-        await this.entity("activities", p.activity_id);
-        await this.validAssignee(p.owner_id);
-        const cid = uuid();
-        await this.create(
-          "controls",
-          { id: cid, demo: d, ...p, created_at: t },
-          "desviacion_registrada",
-          p.finding,
-        );
-        return { id: cid };
-      }
-      case "control.transition": {
-        const p = z
-          .object({
-            id,
-            version,
-            status: z.enum(["en_curso", "cerrada"]),
-            evidence: memo,
-          })
-          .parse(input);
-        const c = await this.entity("controls", p.id);
-        ensure(
-          isManager(a) || (a.role === "tecnico" && c.owner_id === a.id),
-          "No puedes gestionar esta acción correctiva.",
-          403,
-        );
-        ensure(
-          (c.status === "abierta" && p.status === "en_curso") ||
-            (c.status === "en_curso" && p.status === "cerrada"),
-          "Transición de acción no permitida.",
-          409,
-        );
-        if (p.status === "cerrada") this.manage();
-        await this.update(
-          "controls",
-          c,
-          p.version,
-          {
-            status: p.status,
-            evidence: p.evidence,
-            completed_at: p.status === "cerrada" ? t : null,
-          },
-          "accion_" + p.status,
-          p.evidence,
-        );
-        return { id: p.id };
-      }
-      case "goal.create": {
-        this.manage();
-        const p = z
-          .object({
-            title: short,
-            unit: short,
-            target: z.number().finite().nonnegative(),
-            direction: z.enum(["mayor", "menor"]),
-            start_at: date,
-            end_at: date,
-          })
-          .parse(input);
-        ensure(p.end_at >= p.start_at, "Revisa el período de la meta.");
-        const gid = uuid();
-        await this.create(
-          "goals",
-          { id: gid, demo: d, ...p, created_at: t },
-          "meta_creada",
-          p.title,
-        );
-        return { id: gid };
-      }
-      case "goal.evaluate": {
-        this.manage();
-        const p = z
-          .object({
-            id,
-            version,
-            actual: z.number().finite().nonnegative(),
-            evidence: memo,
-          })
-          .parse(input);
-        const g = await this.entity("goals", p.id);
-        await this.update(
-          "goals",
-          g,
-          p.version,
-          { actual: p.actual, evidence: p.evidence, evaluated_at: t },
-          "meta_evaluada",
-          JSON.stringify(p),
-        );
-        return { id: p.id };
-      }
+      case "control.create":
+        return controlCreate(this, input);
+      case "control.transition":
+        return controlTransition(this, input);
+      case "goal.create":
+        return goalCreate(this, input);
+      case "goal.evaluate":
+        return goalEvaluate(this, input);
       case "period.create": {
         this.research();
         const p = z
