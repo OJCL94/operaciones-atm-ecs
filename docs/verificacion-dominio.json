@@ -1,0 +1,206 @@
+{
+  "executed_at": "2026-09-20T23:07:05.520Z",
+  "scope": "Reglas de negocio y migraciones SQL; SQLite en memoria; no incluye HTTP, interfaz ni autenticación",
+  "total": 49,
+  "passed": 49,
+  "failed": 0,
+  "pending": 0,
+  "results": [
+    {
+      "name": "01 Flujo ticket: crear, asignar, responder, atender, resolver, cerrar y reabrir",
+      "status": "PASS"
+    },
+    {
+      "name": "02 La primera respuesta no se sobreescribe con respuestas posteriores",
+      "status": "PASS"
+    },
+    {
+      "name": "03 Resolver exige atención, primera respuesta, diagnóstico y solución",
+      "status": "PASS"
+    },
+    {
+      "name": "04 Tareas abiertas bloquean resolver; completar permite resolver",
+      "status": "PASS"
+    },
+    {
+      "name": "05 No se agregan tareas a tickets resueltos ni tickets a activos retirados",
+      "status": "PASS"
+    },
+    {
+      "name": "06 Roles: solicitante ve sólo sus tickets y técnico sólo propios/asignados",
+      "status": "PASS"
+    },
+    {
+      "name": "07 Roles: solicitante y técnico no administran asignaciones, activos ni recursos",
+      "status": "PASS"
+    },
+    {
+      "name": "08 Roles: auditor consulta, pero no modifica operación",
+      "status": "PASS"
+    },
+    {
+      "name": "09 Roles: sólo asignado/supervisión responde y sólo solicitante/supervisión cierra",
+      "status": "PASS"
+    },
+    {
+      "name": "10 Accesos: sólo admin real, correo inmutable y no autoexclusión",
+      "status": "PASS"
+    },
+    {
+      "name": "11 Asignación rechaza inactivos y roles sin función técnica",
+      "status": "PASS"
+    },
+    {
+      "name": "12 Recurso parcial bloquea inicio; cobertura total habilita; exceso se rechaza",
+      "status": "PASS"
+    },
+    {
+      "name": "13 Actividad pendiente requiere plan y sólo supervisión puede cancelar",
+      "status": "PASS"
+    },
+    {
+      "name": "14 Planificación valida fechas, responsable y activo del ticket",
+      "status": "PASS"
+    },
+    {
+      "name": "15 Control: responsable inicia, supervisor verifica cierre con evidencia",
+      "status": "PASS"
+    },
+    {
+      "name": "16 Metas: comparar mayor/menor e incluir no evaluadas en denominador",
+      "status": "PASS"
+    },
+    {
+      "name": "17 Mediciones: porcentaje calculado, denominador cero nulo y unicidad",
+      "status": "PASS"
+    },
+    {
+      "name": "18 Mediciones: tiempo requiere muestra; semana fuera del período se rechaza",
+      "status": "PASS"
+    },
+    {
+      "name": "19 Restricciones FK, unicidad y rollback de creación con auditoría",
+      "status": "PASS"
+    },
+    {
+      "name": "20 Versiones obsoletas se rechazan sin evento ni modificación extra",
+      "status": "PASS"
+    },
+    {
+      "name": "21 Entornos: demo/real no se cruzan en lecturas, enlaces ni mediciones",
+      "status": "PASS"
+    },
+    {
+      "name": "22 SQL parametrizado y búsqueda literal de comodines",
+      "status": "PASS"
+    },
+    {
+      "name": "23 Paginación estable, filtros y páginas decimales",
+      "status": "PASS"
+    },
+    {
+      "name": "24 Reportes vacíos: porcentajes y promedios nulos, sin evidencia inventada",
+      "status": "PASS"
+    },
+    {
+      "name": "25 Reportes: primera respuesta y resolución excluyen hitos posteriores al corte",
+      "status": "PASS"
+    },
+    {
+      "name": "26 Reportes: última revisión cuenta una vez, monitoreo exige revisión explícita",
+      "status": "PASS"
+    },
+    {
+      "name": "27 Concurrencia: ticket no queda resuelto con nueva actividad pendiente",
+      "status": "PASS"
+    },
+    {
+      "name": "28 Concurrencia: inicio y recurso nuevo preservan cobertura",
+      "status": "PASS"
+    },
+    {
+      "name": "29 Concurrencia: asignaciones parciales no sobrepasan el requisito",
+      "status": "PASS"
+    },
+    {
+      "name": "30 Concurrencia: una de dos modificaciones con misma versión gana",
+      "status": "PASS"
+    },
+    {
+      "name": "31 Concurrencia: período solapado sólo se inserta una vez",
+      "status": "PASS"
+    },
+    {
+      "name": "32 Seed concurrente es idempotente, respeta SLA y conserva cambios posteriores",
+      "status": "PASS"
+    },
+    {
+      "name": "33 Seed restringido a administrador real en demostración",
+      "status": "PASS"
+    },
+    {
+      "name": "34 Auditoría inmutable y fallo de batch revierte toda la operación",
+      "status": "PASS"
+    },
+    {
+      "name": "35 Fechas UTC canónicas y rechazo de rangos inversos",
+      "status": "PASS"
+    },
+    {
+      "name": "36 CSV: UTF8 BOM, comillas, salto de línea y neutralización de fórmulas",
+      "status": "PASS"
+    },
+    {
+      "name": "37 Concurrencia: alta ticket comprueba retiro del activo dentro de escritura",
+      "status": "PASS"
+    },
+    {
+      "name": "38 Reportes: reapertura posterior conserva resolución histórica",
+      "status": "PASS"
+    },
+    {
+      "name": "39 Reportes: reevaluación posterior conserva logro histórico de meta",
+      "status": "PASS"
+    },
+    {
+      "name": "40 Captura semanal guarda 14 métricas, fecha UTC y origen verificable",
+      "status": "PASS"
+    },
+    {
+      "name": "41 Captura duplicada o conflicto manual revierte el lote completo",
+      "status": "PASS"
+    },
+    {
+      "name": "42 Captura rechaza permisos, período ajeno y semanas incompletas",
+      "status": "PASS"
+    },
+    {
+      "name": "43 Última semana parcial termina exactamente al final del período",
+      "status": "PASS"
+    },
+    {
+      "name": "44 Replanificación y cancelación posterior conservan cronograma histórico",
+      "status": "PASS"
+    },
+    {
+      "name": "45 Quitar planificación después del corte conserva su existencia histórica",
+      "status": "PASS"
+    },
+    {
+      "name": "46 Altas posteriores con vencimiento pasado no entran al corte histórico",
+      "status": "PASS"
+    },
+    {
+      "name": "47 Activo retirado bloquea editar la actividad, incluso en la restricción SQL",
+      "status": "PASS"
+    },
+    {
+      "name": "48 Los 14 indicadores coinciden con un flujo controlado y calculable",
+      "status": "PASS"
+    },
+    {
+      "name": "49 Revisiones simultáneas usan orden de inserción y no el texto de su identificador",
+      "status": "PASS"
+    }
+  ]
+}

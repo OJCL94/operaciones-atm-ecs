@@ -1,0 +1,12 @@
+{
+  "executed_at": "2026-09-21T04:09:07.056Z",
+  "node": "v24.19.0",
+  "result": "PASS",
+  "checks": [
+    "Arranque independiente desde paquete sin base previa",
+    "Interfaz compilada y archivos públicos disponibles",
+    "Acceso demo, inicialización y consulta de 16 tickets ficticios",
+    "Manual completo de 17 secciones servido",
+    "Exportación CSV autenticada en instalación nueva"
+  ]
+}
