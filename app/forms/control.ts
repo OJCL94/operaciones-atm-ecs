@@ -1,18 +1,13 @@
 import { Field, FormSpec, Row } from "../ui";
 import { text, area, when, num, choose } from "./fields";
-import { membersOf, assetsOf, isManager } from "./shared";
+import { formContext, formDefaults } from "./context";
 
 // Extraído de app/forms.ts (R4): esta especificación conserva exactamente
 // el comportamiento original del caso "control.create" dentro de makeForm. Ningún
 // campo, título, descripción ni transformación fue modificado.
 export function controlCreate(row: Row, meta: Row, extra: Row = {}): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title = "Registrar desviación y acción correctiva";
   initial.owner_id = "";
   fields = [
@@ -38,13 +33,8 @@ export function controlTransition(
   meta: Row,
   extra: Row = {},
 ): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title =
     row.status === "cerrada"
       ? "Verificar y cerrar acción"
@@ -57,13 +47,8 @@ export function controlTransition(
 // el comportamiento original del caso "goal.create" dentro de makeForm. Ningún
 // campo, título, descripción ni transformación fue modificado.
 export function goalCreate(row: Row, meta: Row, extra: Row = {}): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title = "Definir meta operativa";
   initial.direction = "mayor";
   fields = [
@@ -84,13 +69,8 @@ export function goalCreate(row: Row, meta: Row, extra: Row = {}): FormSpec {
 // el comportamiento original del caso "goal.evaluate" dentro de makeForm. Ningún
 // campo, título, descripción ni transformación fue modificado.
 export function goalEvaluate(row: Row, meta: Row, extra: Row = {}): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title = "Evaluar meta operativa";
   fields = [
     num("actual", "Valor observado"),

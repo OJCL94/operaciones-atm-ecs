@@ -1,19 +1,14 @@
 import { Field, FormSpec, Row } from "../ui";
 import { text, area, when, num, choose } from "./fields";
-import { membersOf, assetsOf, isManager } from "./shared";
+import { formContext, formDefaults } from "./context";
 import { states, priorities, categories } from "@/lib/domain";
 
 // Extraído de app/forms.ts (R4): esta especificación conserva exactamente
 // el comportamiento original del caso "ticket.create" dentro de makeForm. Ningún
 // campo, título, descripción ni transformación fue modificado.
 export function ticketCreate(row: Row, meta: Row, extra: Row = {}): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title = "Registrar nuevo ticket";
   initial.category = "Hardware";
   initial.priority = "media";
@@ -48,13 +43,8 @@ export function ticketCreate(row: Row, meta: Row, extra: Row = {}): FormSpec {
 // el comportamiento original del caso "ticket.assign" dentro de makeForm. Ningún
 // campo, título, descripción ni transformación fue modificado.
 export function ticketAssign(row: Row, meta: Row, extra: Row = {}): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title = "Asignar y clasificar ticket";
   fields = [
     choose("assignee_id", "Responsable", [
@@ -80,13 +70,8 @@ export function ticketTransition(
   meta: Row,
   extra: Row = {},
 ): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title =
     row.status === "cerrado"
       ? "Validar cierre"
@@ -115,13 +100,8 @@ export function ticketTransition(
 // el comportamiento original del caso "ticket.note" dentro de makeForm. Ningún
 // campo, título, descripción ni transformación fue modificado.
 export function ticketNote(row: Row, meta: Row, extra: Row = {}): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title = "Registrar intervención";
   initial.type = row.type ?? "comentario";
   fields = [
@@ -147,13 +127,8 @@ export function ticketNote(row: Row, meta: Row, extra: Row = {}): FormSpec {
 // el comportamiento original del caso "review.create" dentro de makeForm. Ningún
 // campo, título, descripción ni transformación fue modificado.
 export function reviewCreate(row: Row, meta: Row, extra: Row = {}): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title =
     row.kind === "operativa"
       ? "Registrar revisión operativa"

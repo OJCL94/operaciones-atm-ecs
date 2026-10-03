@@ -1,19 +1,14 @@
 import { Field, FormSpec, Row } from "../ui";
 import { text, area, when, num, choose } from "./fields";
-import { membersOf, assetsOf, isManager } from "./shared";
+import { formContext, formDefaults } from "./context";
 import { indicatorDefinitions } from "@/lib/domain";
 
 // Extraído de app/forms.ts (R4): esta especificación conserva exactamente
 // el comportamiento original del caso "period.create" dentro de makeForm. Ningún
 // campo, título, descripción ni transformación fue modificado.
 export function periodCreate(row: Row, meta: Row, extra: Row = {}): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title = "Definir período de investigación";
   initial.phase = "pretest";
   fields = [
@@ -39,13 +34,8 @@ export function measurementCapture(
   meta: Row,
   extra: Row = {},
 ): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title = "Capturar indicadores de la semana";
   initial.period_id = extra.periods?.[0]?.id ?? "";
   fields = [
@@ -69,13 +59,8 @@ export function measurementCreate(
   meta: Row,
   extra: Row = {},
 ): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title = "Registrar medición semanal";
   initial.period_id = extra.periods?.[0]?.id ?? "";
   initial.indicator = "registro";

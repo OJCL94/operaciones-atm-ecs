@@ -1,6 +1,6 @@
 import { Field, FormSpec, Row } from "../ui";
 import { text, area, when, num, choose } from "./fields";
-import { membersOf, assetsOf, isManager } from "./shared";
+import { formContext, formDefaults } from "./context";
 
 // Extraído de app/forms.ts (R4): esta especificación conserva exactamente
 // el comportamiento original del caso "resource.require" dentro de makeForm. Ningún
@@ -10,13 +10,8 @@ export function resourceRequire(
   meta: Row,
   extra: Row = {},
 ): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title = "Definir recurso necesario";
   initial.quantity = 1;
   initial.unit = "unidad";
@@ -37,13 +32,8 @@ export function resourceAllocate(
   meta: Row,
   extra: Row = {},
 ): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title = "Asignar recurso";
   fields = [
     num("quantity", "Cantidad a asignar"),
