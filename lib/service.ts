@@ -1,49 +1,13 @@
 import type { SqlDatabase } from "./database-types";
+import { Actor, isManager, ensure, DomainError } from "./domain";
 import { z } from "zod";
-import {
-  Actor,
-  isManager,
-  ensure,
-  DomainError,
-  categories,
-  deadlines,
-  transitionMap,
-  indicatorDefinitions,
-} from "./domain";
+// Validador usado por list() más abajo, para los módulos "ticket" y "activity"
+// (los demás validadores de entrada viven en lib/handlers/shared-schemas.ts).
+const id = z.string().min(1).max(100);
 import type { Row, HandlerContext } from "./types";
 export type { Row } from "./types";
-const id = z.string().min(1).max(100),
-  short = z.string().trim().min(3).max(160),
-  memo = z.string().trim().min(5).max(5000),
-  date = z
-    .string()
-    .datetime({ offset: true })
-    .transform((v) => new Date(v).toISOString()),
-  version = z.number().int().positive();
-const optId = z
-  .union([id, z.literal("")])
-  .optional()
-  .transform((v) => v || null);
 import { now } from "./clock";
-import { assetSave } from "./handlers/asset";
-import {
-  ticketCreate,
-  ticketAssign,
-  ticketTransition,
-  ticketNote,
-  reviewCreate,
-} from "./handlers/ticket";
-import { activitySave, activityTransition } from "./handlers/activity";
-import { resourceRequire, resourceAllocate } from "./handlers/resource";
-import {
-  controlCreate,
-  controlTransition,
-  goalCreate,
-  goalEvaluate,
-} from "./handlers/control";
-import { periodCreate, measurementCreate } from "./handlers/investigation";
-import { memberSave } from "./handlers/member";
-const uuid = () => crypto.randomUUID();
+import { handlers } from "./handlers/registry";
 export class Service implements HandlerContext {
   constructor(
     public db: SqlDatabase,
@@ -203,47 +167,9 @@ export class Service implements HandlerContext {
     );
   }
   async execute(kind: string, input: unknown): Promise<Row> {
-    const a = this.actor,
-      d = this.demo,
-      t = now();
-    switch (kind) {
-      case "asset.save":
-        return assetSave(this, input);
-      case "ticket.create":
-        return ticketCreate(this, input);
-      case "ticket.assign":
-        return ticketAssign(this, input);
-      case "ticket.transition":
-        return ticketTransition(this, input);
-      case "ticket.note":
-        return ticketNote(this, input);
-      case "review.create":
-        return reviewCreate(this, input);
-      case "activity.save":
-        return activitySave(this, input);
-      case "activity.transition":
-        return activityTransition(this, input);
-      case "resource.require":
-        return resourceRequire(this, input);
-      case "resource.allocate":
-        return resourceAllocate(this, input);
-      case "control.create":
-        return controlCreate(this, input);
-      case "control.transition":
-        return controlTransition(this, input);
-      case "goal.create":
-        return goalCreate(this, input);
-      case "goal.evaluate":
-        return goalEvaluate(this, input);
-      case "period.create":
-        return periodCreate(this, input);
-      case "measurement.create":
-        return measurementCreate(this, input);
-      case "member.save":
-        return memberSave(this, input);
-      default:
-        throw new DomainError("Operación desconocida", 404);
-    }
+    const handler = handlers[kind];
+    ensure(handler, "Operación desconocida", 404);
+    return handler(this, input);
   }
   ticketFilter() {
     return isManager(this.actor) || this.actor.role === "auditor"
