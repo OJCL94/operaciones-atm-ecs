@@ -2,7 +2,8 @@
 // comportamiento original del caso "member.save" dentro de Service.execute.
 // Ningún criterio de autorización, validación ni persistencia fue modificado.
 import { z } from "zod";
-import { now, uuid } from "../clock";
+import { uuid } from "../clock";
+import { actorContext } from "./context";
 import { ensure, isManager } from "../domain";
 import type { HandlerContext, Row } from "../types";
 import { id, optId, short, memo, date, version } from "./shared-schemas";
@@ -11,9 +12,7 @@ export async function memberSave(
   svc: HandlerContext,
   input: unknown,
 ): Promise<Row> {
-  const a = svc.actor,
-    d = svc.demo,
-    t = now();
+  const { a, d, t } = actorContext(svc);
   ensure(
     a.role === "admin" && a.actualAdmin !== false,
     "Solo el administrador real gestiona accesos.",
