@@ -26,6 +26,13 @@ const optId = z
   .transform((v) => v || null);
 import { now } from "./clock";
 import { assetSave } from "./handlers/asset";
+import {
+  ticketCreate,
+  ticketAssign,
+  ticketTransition,
+  ticketNote,
+  reviewCreate,
+} from "./handlers/ticket";
 const uuid = () => crypto.randomUUID();
 export class Service implements HandlerContext {
   constructor(
@@ -192,244 +199,16 @@ export class Service implements HandlerContext {
     switch (kind) {
       case "asset.save":
         return assetSave(this, input);
-      case "ticket.create": {
-        this.write();
-        const p = z
-          .object({
-            asset_id: id,
-            title: short,
-            description: memo,
-            category: z.enum(categories as [string, ...string[]]),
-            priority: z.enum(["critica", "alta", "media", "baja"]),
-            assignee_id: optId,
-          })
-          .parse(input);
-        const asset = await this.entity("assets", p.asset_id);
-        ensure(asset.status !== "retirado", "El activo está retirado.");
-        if (p.assignee_id) {
-          this.manage();
-          await this.validAssignee(p.assignee_id);
-        }
-        const tid = uuid();
-        const code =
-          "TK-" +
-          new Date().getFullYear().toString().slice(-2) +
-          "-" +
-          tid.slice(0, 6).toUpperCase();
-        await this.create(
-          "tickets",
-          {
-            id: tid,
-            demo: d,
-            code,
-            ...p,
-            assignee_id: p.assignee_id ?? null,
-            requester_id: a.id,
-            status: p.assignee_id ? "asignado" : "abierto",
-            created_at: t,
-            updated_at: t,
-            due_at: new Date(
-              Date.now() + deadlines[p.priority] * 3600000,
-            ).toISOString(),
-          },
-          "ticket_creado",
-          p.description,
-        );
-        return { id: tid };
-      }
-      case "ticket.assign": {
-        this.manage();
-        const p = z
-          .object({
-            id,
-            version,
-            assignee_id: id,
-            priority: z.enum(["critica", "alta", "media", "baja"]),
-            category: z.enum(categories as [string, ...string[]]),
-            reason: memo,
-          })
-          .parse(input);
-        const ticket = await this.entity("tickets", p.id);
-        ensure(
-          !["resuelto", "cerrado"].includes(ticket.status),
-          "Reabre el ticket antes de reasignarlo.",
-        );
-        await this.validAssignee(p.assignee_id);
-        await this.update(
-          "tickets",
-          ticket,
-          p.version,
-          {
-            assignee_id: p.assignee_id,
-            priority: p.priority,
-            category: p.category,
-            status: ticket.status === "abierto" ? "asignado" : ticket.status,
-            updated_at: t,
-            due_at: new Date(
-              new Date(ticket.created_at).getTime() +
-                deadlines[p.priority] * 3600000,
-            ).toISOString(),
-          },
-          "asignacion",
-          JSON.stringify({
-            motivo: p.reason,
-            responsable: p.assignee_id,
-            prioridad: p.priority,
-            categoria: p.category,
-          }),
-        );
-        return { id: p.id };
-      }
-      case "ticket.transition": {
-        const p = z
-          .object({
-            id,
-            version,
-            status: z.enum([
-              "asignado",
-              "en_atencion",
-              "en_espera",
-              "resuelto",
-              "cerrado",
-            ]),
-            note: memo,
-            diagnosis: z.string().trim().max(5000).default(""),
-            solution: z.string().trim().max(5000).default(""),
-          })
-          .parse(input);
-        const ticket = await this.entity("tickets", p.id);
-        this.ticketAccess(ticket, true);
-        ensure(
-          transitionMap[ticket.status]?.includes(p.status),
-          "Transición de estado no permitida.",
-          409,
-        );
-        if (p.status === "cerrado")
-          ensure(
-            isManager(a) || ticket.requester_id === a.id,
-            "Solo supervisión o el solicitante pueden validar el cierre.",
-            403,
-          );
-        else
-          ensure(
-            isManager(a) ||
-              (a.role === "tecnico" && ticket.assignee_id === a.id),
-            "Solo el técnico asignado o supervisión pueden cambiar este estado.",
-            403,
-          );
-        ensure(
-          ticket.assignee_id,
-          "Asigna un técnico antes de atender el ticket.",
-        );
-        if (p.status === "resuelto") {
-          ensure(
-            p.diagnosis.length >= 5 && p.solution.length >= 5,
-            "Registra un diagnóstico y una solución de al menos 5 caracteres.",
-          );
-          const open = await this.one(
-            "SELECT COUNT(*) n FROM activities WHERE ticket_id=? AND status NOT IN ('completada','cancelada')",
-            [p.id],
-          );
-          ensure(
-            !open?.n,
-            "Completa o cancela las actividades vinculadas antes de resolver.",
-          );
-          ensure(
-            ticket.first_response_at,
-            "Registra una primera respuesta técnica antes de resolver.",
-          );
-        }
-        const values: Row = { status: p.status, updated_at: t };
-        if (p.status === "resuelto") {
-          values.diagnosis = p.diagnosis;
-          values.solution = p.solution;
-          values.resolved_at = t;
-        }
-        if (p.status === "cerrado") values.closed_at = t;
-        if (
-          p.status === "en_atencion" &&
-          ["cerrado", "resuelto"].includes(ticket.status)
-        ) {
-          ensure(isManager(a), "La reapertura requiere supervisión.", 403);
-          values.resolved_at = null;
-          values.closed_at = null;
-        }
-        await this.update(
-          "tickets",
-          ticket,
-          p.version,
-          values,
-          "estado",
-          JSON.stringify({
-            de: ticket.status,
-            a: p.status,
-            nota: p.note,
-            diagnostico: p.diagnosis,
-            solucion: p.solution,
-          }),
-        );
-        return { id: p.id };
-      }
-      case "ticket.note": {
-        const p = z
-          .object({
-            id,
-            version,
-            type: z.enum(["comentario", "respuesta", "seguimiento"]),
-            note: memo,
-          })
-          .parse(input);
-        const ticket = await this.entity("tickets", p.id);
-        this.ticketAccess(ticket, true);
-        ensure(
-          ticket.status !== "cerrado",
-          "Reabre el ticket para registrar una intervención.",
-        );
-        if (p.type !== "comentario")
-          ensure(
-            isManager(a) ||
-              (a.role === "tecnico" && ticket.assignee_id === a.id),
-            "Solo el personal asignado registra respuestas y seguimiento.",
-            403,
-          );
-        const values: Row = { updated_at: t };
-        if (p.type === "respuesta" && !ticket.first_response_at)
-          values.first_response_at = t;
-        await this.update("tickets", ticket, p.version, values, p.type, p.note);
-        return { id: p.id };
-      }
-      case "review.create": {
-        this.manage();
-        const p = z
-          .object({
-            entity_id: id,
-            kind: z.enum(["categoria", "monitoreo", "operativa"]),
-            passed: z.boolean(),
-            evidence: memo,
-          })
-          .parse(input);
-        const row = await this.entity(
-          p.kind === "operativa" ? "activities" : "tickets",
-          p.entity_id,
-        );
-        await this.create(
-          "reviews",
-          {
-            id: uuid(),
-            demo: d,
-            ticket_id: p.kind === "operativa" ? null : row.id,
-            activity_id: p.kind === "operativa" ? row.id : null,
-            kind: p.kind,
-            passed: Number(p.passed),
-            evidence: p.evidence,
-            actor_id: a.id,
-            created_at: t,
-          },
-          "revision_" + p.kind,
-          p.evidence,
-        );
-        return { ok: true };
-      }
+      case "ticket.create":
+        return ticketCreate(this, input);
+      case "ticket.assign":
+        return ticketAssign(this, input);
+      case "ticket.transition":
+        return ticketTransition(this, input);
+      case "ticket.note":
+        return ticketNote(this, input);
+      case "review.create":
+        return reviewCreate(this, input);
       case "activity.save": {
         this.manage();
         const p = z
