@@ -448,3 +448,86 @@ export function SearchBox({
   );
 }
 export { TableCell, Button };
+
+// Movido desde app/workspace.tsx (R3): evita un ciclo de dependencia entre
+// workspace.tsx y app/views/AuditView.tsx, que también lo necesita.
+export function EventList({
+  events,
+  meta,
+}: {
+  events: Row[];
+  meta?: Row | null;
+}) {
+  const labels: Record<string, string> = {
+    asset_id: "Activo",
+    ticket_id: "Ticket",
+    owner_id: "Responsable",
+    title: "Actividad",
+    description: "Alcance",
+    planned_start: "Inicio previsto",
+    planned_end: "Fin previsto",
+    planned_at: "Plan registrado",
+    status: "Estado",
+    responsable: "Responsable",
+    prioridad: "Prioridad",
+    categoria: "Categoría",
+    motivo: "Motivo",
+    de: "Anterior",
+    a: "Nuevo estado",
+    nota: "Nota",
+    diagnostico: "Diagnóstico",
+    solucion: "Solución",
+    actual: "Valor observado",
+    evidence: "Evidencia",
+    desde: "Desde",
+    hasta: "Hasta",
+    indicadores: "Indicadores",
+  };
+  const describe = (key: string, value: unknown) => {
+    if (typeof value !== "string") return String(value);
+    if (["responsable", "owner_id", "assignee_id"].includes(key))
+      return meta?.members?.find((p: Row) => p.id === value)?.name ?? value;
+    if (key === "asset_id")
+      return meta?.assets?.find((p: Row) => p.id === value)?.code ?? value;
+    if (/^(\d{4}-\d{2}-\d{2})T/.test(value)) return formatDate(value);
+    return states[value] ?? (priorities as Row)[value] ?? value;
+  };
+  const details = (event: Row) => {
+    try {
+      const parsed = JSON.parse(event.detail);
+      return Object.entries(parsed)
+        .filter(
+          ([k, v]) =>
+            v !== "" && v !== null && !["before", "ticket_id"].includes(k),
+        )
+        .map(
+          ([k, v]) =>
+            `${labels[k] ?? k}: ${typeof v === "object" ? JSON.stringify(v) : describe(k, v)}`,
+        )
+        .join(" · ");
+    } catch {
+      return event.detail;
+    }
+  };
+  return (
+    <div className="timeline">
+      {events.length ? (
+        events.map((e: Row) => (
+          <div className="timeline-item" key={e.id}>
+            <span className="timeline-node" />
+            <div>
+              <div className="timeline-heading">
+                <strong>{e.action.replaceAll("_", " ")}</strong>
+                <time>{formatDate(e.created_at)}</time>
+              </div>
+              <p>{details(e)}</p>
+              <small>{e.actor_name ?? "Registro del sistema"}</small>
+            </div>
+          </div>
+        ))
+      ) : (
+        <p className="empty-inline">Aún no hay eventos registrados.</p>
+      )}
+    </div>
+  );
+}

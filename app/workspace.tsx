@@ -65,10 +65,19 @@ import {
   LoadState,
   SearchBox,
   formatDate,
+  EventList,
 } from "./ui";
 import { makeForm } from "./forms";
 import { useApi, useRemote } from "./use-api";
 import Dashboard, { TicketRows } from "./dashboard";
+import AuditView from "./views/AuditView";
+import AssetsView from "./views/AssetsView";
+import TicketsView from "./views/TicketsView";
+import ActivitiesView from "./views/ActivitiesView";
+import ControlsView from "./views/ControlsView";
+import ReportsView from "./views/ReportsView";
+import InvestigationView from "./views/InvestigationView";
+import MembersView from "./views/MembersView";
 const nav = [
   ["overview", "Vista general", LayoutDashboard],
   ["tickets", "Tickets", Ticket],
@@ -159,80 +168,6 @@ function Menu({
           </SidebarMenuItem>
         ))}
     </SidebarMenu>
-  );
-}
-function EventList({ events, meta }: { events: Row[]; meta?: Row | null }) {
-  const labels: Record<string, string> = {
-    asset_id: "Activo",
-    ticket_id: "Ticket",
-    owner_id: "Responsable",
-    title: "Actividad",
-    description: "Alcance",
-    planned_start: "Inicio previsto",
-    planned_end: "Fin previsto",
-    planned_at: "Plan registrado",
-    status: "Estado",
-    responsable: "Responsable",
-    prioridad: "Prioridad",
-    categoria: "Categoría",
-    motivo: "Motivo",
-    de: "Anterior",
-    a: "Nuevo estado",
-    nota: "Nota",
-    diagnostico: "Diagnóstico",
-    solucion: "Solución",
-    actual: "Valor observado",
-    evidence: "Evidencia",
-    desde: "Desde",
-    hasta: "Hasta",
-    indicadores: "Indicadores",
-  };
-  const describe = (key: string, value: unknown) => {
-    if (typeof value !== "string") return String(value);
-    if (["responsable", "owner_id", "assignee_id"].includes(key))
-      return meta?.members?.find((p: Row) => p.id === value)?.name ?? value;
-    if (key === "asset_id")
-      return meta?.assets?.find((p: Row) => p.id === value)?.code ?? value;
-    if (/^(\d{4}-\d{2}-\d{2})T/.test(value)) return formatDate(value);
-    return states[value] ?? (priorities as Row)[value] ?? value;
-  };
-  const details = (event: Row) => {
-    try {
-      const parsed = JSON.parse(event.detail);
-      return Object.entries(parsed)
-        .filter(
-          ([k, v]) =>
-            v !== "" && v !== null && !["before", "ticket_id"].includes(k),
-        )
-        .map(
-          ([k, v]) =>
-            `${labels[k] ?? k}: ${typeof v === "object" ? JSON.stringify(v) : describe(k, v)}`,
-        )
-        .join(" · ");
-    } catch {
-      return event.detail;
-    }
-  };
-  return (
-    <div className="timeline">
-      {events.length ? (
-        events.map((e: Row) => (
-          <div className="timeline-item" key={e.id}>
-            <span className="timeline-node" />
-            <div>
-              <div className="timeline-heading">
-                <strong>{e.action.replaceAll("_", " ")}</strong>
-                <time>{formatDate(e.created_at)}</time>
-              </div>
-              <p>{details(e)}</p>
-              <small>{e.actor_name ?? "Registro del sistema"}</small>
-            </div>
-          </div>
-        ))
-      ) : (
-        <p className="empty-inline">Aún no hay eventos registrados.</p>
-      )}
-    </div>
   );
 }
 export default function Workspace({
@@ -364,7 +299,7 @@ export default function Workspace({
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success("Exportación generada.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo exportar.");
@@ -572,652 +507,92 @@ export default function Workspace({
                     />
                   )}
                   {view === "tickets" && (
-                    <section className="panel">
-                      <div className="toolbar">
-                        <Tabs
-                          value={queue}
-                          onValueChange={(v) => {
-                            setQueue(v);
-                            setPage(1);
-                          }}
-                        >
-                          <TabsList>
-                            <TabsTrigger value="all">Todos</TabsTrigger>
-                            <TabsTrigger value="mine">
-                              Mis asignados
-                            </TabsTrigger>
-                            <TabsTrigger value="overdue">
-                              Fuera de plazo
-                            </TabsTrigger>
-                          </TabsList>
-                        </Tabs>
-                        <Button
-                          variant="outline"
-                          onClick={() => download("tickets")}
-                        >
-                          <Download size={16} /> Exportar
-                        </Button>
-                      </div>
-                      <div className="filter-row">
-                        <SearchBox value={q} onChange={setQ} />
-                        <Choice
-                          value={status}
-                          label="Filtrar por estado"
-                          options={[
-                            ["", "Todos los estados"],
-                            ...Object.keys(transitionMap).map(
-                              (v) => [v, states[v]] as [string, string],
-                            ),
-                          ]}
-                          onChange={(v) => {
-                            setStatus(v);
-                            setPage(1);
-                          }}
-                        />
-                        <Choice
-                          value={priority}
-                          label="Filtrar por prioridad"
-                          options={[
-                            ["", "Todas las prioridades"],
-                            ...Object.entries(priorities),
-                          ]}
-                          onChange={(v) => {
-                            setPriority(v);
-                            setPage(1);
-                          }}
-                        />
-                        {assetFilter && (
-                          <Button
-                            variant="ghost"
-                            onClick={() => setAssetFilter("")}
-                          >
-                            Quitar filtro de activo <X size={14} />
-                          </Button>
-                        )}
-                      </div>
-                      <TicketRows rows={data.rows} open={openTicket} />
-                      <Pager data={data} page={page} setPage={setPage} />
-                    </section>
+                    <TicketsView
+                      data={data}
+                      q={q}
+                      setQ={setQ}
+                      status={status}
+                      setStatus={setStatus}
+                      priority={priority}
+                      setPriority={setPriority}
+                      assetFilter={assetFilter}
+                      setAssetFilter={setAssetFilter}
+                      queue={queue}
+                      setQueue={setQueue}
+                      page={page}
+                      setPage={setPage}
+                      download={download}
+                      openTicket={openTicket}
+                    />
                   )}
                   {view === "assets" && (
-                    <section className="panel">
-                      <div className="toolbar">
-                        <SearchBox
-                          value={q}
-                          onChange={setQ}
-                          label="Buscar código, serie o ubicación"
-                        />
-                        <span className="muted-text">
-                          {data.total} activos registrados
-                        </span>
-                      </div>
-                      <DataTable
-                        headers={[
-                          "Activo",
-                          "Modelo / Serie",
-                          "Ubicación",
-                          "Estado",
-                          "Acciones",
-                        ]}
-                        rows={data.rows}
-                        render={(a) => (
-                          <>
-                            <TableCell>
-                              <span className="asset-code">{a.code}</span>
-                              <strong className="table-title">{a.name}</strong>
-                            </TableCell>
-                            <TableCell>
-                              {a.model}
-                              <small className="subline">{a.serial}</small>
-                            </TableCell>
-                            <TableCell>{a.location}</TableCell>
-                            <TableCell>
-                              <Badge value={a.status} />
-                            </TableCell>
-                            <TableCell>
-                              <div className="row-actions">
-                                <button
-                                  className="text-link"
-                                  onClick={() => {
-                                    navigate("tickets");
-                                    setAssetFilter(a.id);
-                                  }}
-                                >
-                                  Ver historial <ArrowUpRight size={14} />
-                                </button>
-                                {manager && (
-                                  <button
-                                    className="text-link"
-                                    onClick={() => form("asset.save", a)}
-                                  >
-                                    Editar
-                                  </button>
-                                )}
-                              </div>
-                            </TableCell>
-                          </>
-                        )}
-                      />
-                      <Pager data={data} page={page} setPage={setPage} />
-                    </section>
+                    <AssetsView
+                      data={data}
+                      q={q}
+                      setQ={setQ}
+                      page={page}
+                      setPage={setPage}
+                      manager={manager}
+                      navigate={navigate}
+                      setAssetFilter={setAssetFilter}
+                      form={form}
+                    />
                   )}
                   {view === "activities" && (
-                    <section className="panel">
-                      <div className="panel-heading">
-                        <div>
-                          <h2>Actividades y cronograma</h2>
-                          <p>
-                            La demanda pendiente también se conserva para medir
-                            la planificación.
-                          </p>
-                        </div>
-                      </div>
-                      <DataTable
-                        headers={[
-                          "Actividad",
-                          "Activo",
-                          "Responsable",
-                          "Estado",
-                          "Fin previsto",
-                          "Acciones",
-                        ]}
-                        rows={data.rows}
-                        render={(a) => (
-                          <>
-                            <TableCell>
-                              <button
-                                className="row-link"
-                                onClick={() =>
-                                  setDetail({ type: "activity", id: a.id })
-                                }
-                              >
-                                <strong className="table-title">
-                                  {a.title}
-                                </strong>
-                                <small className="subline">
-                                  Requerida el {formatDate(a.created_at, true)}
-                                </small>
-                              </button>
-                            </TableCell>
-                            <TableCell>{a.asset_code}</TableCell>
-                            <TableCell>
-                              {a.owner_name ?? "Sin asignar"}
-                            </TableCell>
-                            <TableCell>
-                              <Badge value={a.status} />
-                            </TableCell>
-                            <TableCell>{formatDate(a.planned_end)}</TableCell>
-                            <TableCell>
-                              <button
-                                className="text-link"
-                                onClick={() =>
-                                  setDetail({ type: "activity", id: a.id })
-                                }
-                              >
-                                Ver actividad <ArrowUpRight size={14} />
-                              </button>
-                            </TableCell>
-                          </>
-                        )}
-                      />
-                      <Pager data={data} page={page} setPage={setPage} />
-                    </section>
+                    <ActivitiesView
+                      data={data}
+                      page={page}
+                      setPage={setPage}
+                      setDetail={setDetail}
+                    />
                   )}
                   {["controls", "goals"].includes(view) && (
-                    <>
-                      <Tabs
-                        value={view}
-                        onValueChange={navigate}
-                        className="section-tabs"
-                      >
-                        <TabsList>
-                          <TabsTrigger value="controls">
-                            Desviaciones y acciones
-                          </TabsTrigger>
-                          {research && (
-                            <TabsTrigger value="goals">
-                              Metas operativas
-                            </TabsTrigger>
-                          )}
-                        </TabsList>
-                      </Tabs>
-                      {view === "controls" ? (
-                        <section className="panel">
-                          <div className="panel-heading">
-                            <div>
-                              <h2>Seguimiento de acciones correctivas</h2>
-                              <p>
-                                Registra nuevos hallazgos desde el detalle de
-                                una actividad.
-                              </p>
-                            </div>
-                            {manager && (
-                              <Button
-                                variant="outline"
-                                onClick={() => navigate("activities")}
-                              >
-                                Ir a actividades
-                              </Button>
-                            )}
-                          </div>
-                          <DataTable
-                            headers={[
-                              "Desviación / Acción",
-                              "Actividad",
-                              "Responsable",
-                              "Plazo",
-                              "Estado",
-                              "Seguimiento",
-                            ]}
-                            rows={data.rows}
-                            render={(c) => (
-                              <>
-                                <TableCell>
-                                  <strong className="table-title">
-                                    {c.title}
-                                  </strong>
-                                  <p className="wrap-cell">{c.finding}</p>
-                                  <p className="wrap-cell">
-                                    <b>Acción:</b> {c.action}
-                                  </p>
-                                  {c.evidence && (
-                                    <p className="wrap-cell">
-                                      <b>Evidencia:</b> {c.evidence}
-                                    </p>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <button
-                                    className="text-link wrap-cell"
-                                    onClick={() =>
-                                      setDetail({
-                                        type: "activity",
-                                        id: c.activity_id,
-                                      })
-                                    }
-                                  >
-                                    {c.activity_title}
-                                  </button>
-                                </TableCell>
-                                <TableCell>{c.owner_name}</TableCell>
-                                <TableCell>{formatDate(c.due_at)}</TableCell>
-                                <TableCell>
-                                  <Badge value={c.status} />
-                                </TableCell>
-                                <TableCell>
-                                  {c.status === "abierta" &&
-                                  (manager || actor?.id === c.owner_id) ? (
-                                    <Button
-                                      variant="outline"
-                                      onClick={() =>
-                                        form("control.transition", {
-                                          ...c,
-                                          status: "en_curso",
-                                        })
-                                      }
-                                    >
-                                      Iniciar
-                                    </Button>
-                                  ) : c.status === "en_curso" && manager ? (
-                                    <Button
-                                      variant="outline"
-                                      onClick={() =>
-                                        form("control.transition", {
-                                          ...c,
-                                          status: "cerrada",
-                                        })
-                                      }
-                                    >
-                                      Verificar cierre
-                                    </Button>
-                                  ) : (
-                                    <span className="muted-text">
-                                      {c.status === "cerrada"
-                                        ? "Verificada"
-                                        : "En seguimiento"}
-                                    </span>
-                                  )}
-                                </TableCell>
-                              </>
-                            )}
-                          />
-                          <Pager data={data} page={page} setPage={setPage} />
-                        </section>
-                      ) : (
-                        <div className="goals-grid">
-                          {data.rows.length ? (
-                            data.rows.map((g: Row) => (
-                              <section className="panel goal-card" key={g.id}>
-                                <div className="goal-icon">
-                                  <Target size={22} />
-                                </div>
-                                <h2>{g.title}</h2>
-                                <p className="muted-text">
-                                  {formatDate(g.start_at, true)} —{" "}
-                                  {formatDate(g.end_at, true)}
-                                </p>
-                                <div className="goal-value">
-                                  {g.actual ?? "—"}{" "}
-                                  <span>
-                                    / {g.target} {g.unit}
-                                  </span>
-                                </div>
-                                <p className="muted-text">
-                                  Objetivo:{" "}
-                                  {g.direction === "mayor"
-                                    ? "al menos"
-                                    : "como máximo"}{" "}
-                                  {g.target}
-                                </p>
-                                <Badge
-                                  value={
-                                    g.actual === null
-                                      ? "Sin evaluar"
-                                      : (
-                                            g.direction === "mayor"
-                                              ? g.actual >= g.target
-                                              : g.actual <= g.target
-                                          )
-                                        ? "Meta cumplida"
-                                        : "Pendiente de alcanzar"
-                                  }
-                                />
-                                {g.evidence && (
-                                  <p className="evidence">{g.evidence}</p>
-                                )}
-                                {manager && (
-                                  <Button
-                                    variant="outline"
-                                    onClick={() => form("goal.evaluate", g)}
-                                  >
-                                    Registrar evaluación
-                                  </Button>
-                                )}
-                              </section>
-                            ))
-                          ) : (
-                            <section className="panel empty-inline">
-                              Aún no hay metas. Define el objetivo antes de
-                              registrar su resultado.
-                            </section>
-                          )}
-                        </div>
-                      )}
-                    </>
+                    <ControlsView
+                      view={view}
+                      navigate={navigate}
+                      research={research}
+                      manager={manager}
+                      actor={actor}
+                      data={data}
+                      page={page}
+                      setPage={setPage}
+                      setDetail={setDetail}
+                      form={form}
+                    />
                   )}
                   {view === "reports" && (
-                    <>
-                      <section className="panel report-filters">
-                        <div>
-                          <label htmlFor="report-from">Desde</label>
-                          <input
-                            id="report-from"
-                            type="date"
-                            value={from}
-                            onChange={(e) => setFrom(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="report-to">Hasta</label>
-                          <input
-                            id="report-to"
-                            type="date"
-                            value={to}
-                            onChange={(e) => setTo(e.target.value)}
-                          />
-                        </div>
-                        <Button
-                          variant="outline"
-                          onClick={() => download("reports")}
-                        >
-                          <Download size={16} /> Exportar indicadores
-                        </Button>
-                      </section>
-                      <p className="research-note">
-                        Definiciones operativas propuestas a partir del Anexo 2.
-                        Un denominador vacío se presenta como «Sin datos». Estos
-                        resultados describen los registros; no prueban la
-                        hipótesis de investigación.
-                      </p>
-                      <div className="indicator-grid">
-                        {data.metrics.map((m: Row) => (
-                          <section className="panel indicator-card" key={m.id}>
-                            <div className="indicator-label">{m.label}</div>
-                            <div className="indicator-value">
-                              {m.value === null
-                                ? "Sin datos"
-                                : new Intl.NumberFormat("es-PE", {
-                                    maximumFractionDigits: 2,
-                                  }).format(m.value)}
-                              <span>{m.value === null ? "" : m.unit}</span>
-                            </div>
-                            <div className="indicator-sample">
-                              {m.denominator !== undefined
-                                ? `${m.numerator ?? 0} / ${m.denominator} · `
-                                : ""}
-                              n = {m.sample_size}
-                              {m.pending !== undefined
-                                ? ` · Pendientes: ${m.pending}`
-                                : ""}
-                            </div>
-                            <details>
-                              <summary>Cómo se calcula</summary>
-                              <p>{m.formula}</p>
-                            </details>
-                          </section>
-                        ))}
-                      </div>
-                    </>
+                    <ReportsView
+                      data={data}
+                      from={from}
+                      setFrom={setFrom}
+                      to={to}
+                      setTo={setTo}
+                      download={download}
+                    />
                   )}
                   {view === "periods" && (
-                    <div className="section-stack">
-                      <p className="research-note">
-                        El período de cuatro u ocho semanas requiere una
-                        decisión metodológica del asesor. Aquí se registran
-                        períodos y datos observados; no se generan pretest,
-                        postest ni resultados estadísticos ficticios.
-                      </p>
-                      <section className="panel">
-                        <div className="panel-heading">
-                          <div>
-                            <h2>Períodos del estudio</h2>
-                            <p>
-                              Las fechas deben ser comparables y no solaparse.
-                            </p>
-                          </div>
-                          {data.rows.length > 0 && (
-                            <div className="heading-actions">
-                              <Button
-                                variant="outline"
-                                onClick={() =>
-                                  form(
-                                    "measurement.capture",
-                                    {},
-                                    { periods: data.rows },
-                                  )
-                                }
-                              >
-                                Capturar semana
-                              </Button>
-                              <Button
-                                onClick={() =>
-                                  form(
-                                    "measurement.create",
-                                    {},
-                                    { periods: data.rows },
-                                  )
-                                }
-                              >
-                                <Plus size={16} /> Medición manual
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                        <DataTable
-                          headers={[
-                            "Período",
-                            "Fase",
-                            "Inicio",
-                            "Fin",
-                            "Justificación",
-                          ]}
-                          rows={data.rows}
-                          render={(p) => (
-                            <>
-                              <TableCell>
-                                <strong>{p.label}</strong>
-                              </TableCell>
-                              <TableCell>
-                                <Badge value={p.phase} />
-                              </TableCell>
-                              <TableCell>
-                                {formatDate(p.start_at, true)}
-                              </TableCell>
-                              <TableCell>
-                                {formatDate(p.end_at, true)}
-                              </TableCell>
-                              <TableCell className="wrap-cell">
-                                <details>
-                                  <summary>Ver justificación</summary>
-                                  <p>{p.notes}</p>
-                                </details>
-                              </TableCell>
-                            </>
-                          )}
-                        />
-                      </section>
-                      <section className="panel">
-                        <div className="panel-heading">
-                          <div>
-                            <h2>Mediciones registradas</h2>
-                            <p>
-                              Conservan la fuente y la referencia de evidencia.
-                            </p>
-                          </div>
-                          <Button
-                            variant="outline"
-                            onClick={() => download("measurements")}
-                          >
-                            <Download size={16} /> CSV para Excel / SPSS
-                          </Button>
-                        </div>
-                        <DataTable
-                          headers={[
-                            "Semana / Fase",
-                            "Indicador",
-                            "Valor",
-                            "Muestra",
-                            "Fuente / Evidencia",
-                          ]}
-                          rows={data.measurements}
-                          empty="Registra una medición con información observada y su fuente."
-                          render={(m) => (
-                            <>
-                              <TableCell>
-                                {formatDate(m.week_start, true)}
-                                <small className="subline">
-                                  {m.phase} · {m.label}
-                                </small>
-                              </TableCell>
-                              <TableCell>
-                                {
-                                  indicatorDefinitions.find(
-                                    (i) => i[0] === m.indicator,
-                                  )?.[1]
-                                }
-                              </TableCell>
-                              <TableCell>{m.value ?? "Sin datos"}</TableCell>
-                              <TableCell>{m.sample_size}</TableCell>
-                              <TableCell className="wrap-cell">
-                                <strong>{m.source}</strong>
-                                <details>
-                                  <summary>Ver evidencia</summary>
-                                  <p>{m.evidence}</p>
-                                </details>
-                              </TableCell>
-                            </>
-                          )}
-                        />
-                      </section>
-                    </div>
+                    <InvestigationView
+                      data={data}
+                      form={form}
+                      download={download}
+                    />
                   )}
                   {view === "audit" && (
-                    <section className="panel">
-                      <div className="panel-heading">
-                        <div>
-                          <h2>Registro de cambios</h2>
-                          <p>
-                            Los eventos no se editan ni se eliminan desde la
-                            aplicación.
-                          </p>
-                        </div>
-                      </div>
-                      <EventList events={data.rows} meta={meta} />
-                      <Pager data={data} page={page} setPage={setPage} />
-                    </section>
+                    <AuditView
+                      data={data}
+                      meta={meta}
+                      page={page}
+                      setPage={setPage}
+                    />
                   )}
                   {view === "members" && (
-                    <section className="panel">
-                      <div className="panel-heading">
-                        <div>
-                          <h2>
-                            {demo
-                              ? "Perfiles de demostración"
-                              : "Accesos del equipo"}
-                          </h2>
-                          <p>
-                            {demo
-                              ? "Explora los permisos con el selector de rol. Los accesos reales se administran en Operación real."
-                              : "La identidad se verifica al iniciar sesión; los permisos se aplican en el servidor."}
-                          </p>
-                        </div>
-                      </div>
-                      <DataTable
-                        headers={[
-                          "Persona",
-                          "Correo",
-                          "Rol",
-                          "Acceso",
-                          "Acciones",
-                        ]}
-                        rows={data.rows}
-                        render={(m) => (
-                          <>
-                            <TableCell>
-                              <strong>{m.name}</strong>
-                            </TableCell>
-                            <TableCell>{m.email}</TableCell>
-                            <TableCell>{(roles as Row)[m.role]}</TableCell>
-                            <TableCell>
-                              <Badge
-                                value={
-                                  m.active ? "Habilitado" : "Deshabilitado"
-                                }
-                              />
-                            </TableCell>
-                            <TableCell>
-                              {!demo && (
-                                <div className="row-actions">
-                                  <button
-                                    className="text-link"
-                                    onClick={() => form("member.save", m)}
-                                  >
-                                    Editar acceso
-                                  </button>
-                                  <button
-                                    className="text-link"
-                                    onClick={() => form("member.password", m)}
-                                  >
-                                    Establecer contraseña
-                                  </button>
-                                </div>
-                              )}
-                            </TableCell>
-                          </>
-                        )}
-                      />
-                      <Pager data={data} page={page} setPage={setPage} />
-                    </section>
+                    <MembersView
+                      data={data}
+                      demo={demo}
+                      page={page}
+                      setPage={setPage}
+                      form={form}
+                    />
                   )}
                 </>
               )}
