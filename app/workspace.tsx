@@ -65,10 +65,14 @@ import {
   LoadState,
   SearchBox,
   formatDate,
+  EventList,
 } from "./ui";
 import { makeForm } from "./forms";
 import { useApi, useRemote } from "./use-api";
 import Dashboard, { TicketRows } from "./dashboard";
+import AuditView from "./views/AuditView";
+import AssetsView from "./views/AssetsView";
+import TicketsView from "./views/TicketsView";
 const nav = [
   ["overview", "Vista general", LayoutDashboard],
   ["tickets", "Tickets", Ticket],
@@ -159,80 +163,6 @@ function Menu({
           </SidebarMenuItem>
         ))}
     </SidebarMenu>
-  );
-}
-function EventList({ events, meta }: { events: Row[]; meta?: Row | null }) {
-  const labels: Record<string, string> = {
-    asset_id: "Activo",
-    ticket_id: "Ticket",
-    owner_id: "Responsable",
-    title: "Actividad",
-    description: "Alcance",
-    planned_start: "Inicio previsto",
-    planned_end: "Fin previsto",
-    planned_at: "Plan registrado",
-    status: "Estado",
-    responsable: "Responsable",
-    prioridad: "Prioridad",
-    categoria: "Categoría",
-    motivo: "Motivo",
-    de: "Anterior",
-    a: "Nuevo estado",
-    nota: "Nota",
-    diagnostico: "Diagnóstico",
-    solucion: "Solución",
-    actual: "Valor observado",
-    evidence: "Evidencia",
-    desde: "Desde",
-    hasta: "Hasta",
-    indicadores: "Indicadores",
-  };
-  const describe = (key: string, value: unknown) => {
-    if (typeof value !== "string") return String(value);
-    if (["responsable", "owner_id", "assignee_id"].includes(key))
-      return meta?.members?.find((p: Row) => p.id === value)?.name ?? value;
-    if (key === "asset_id")
-      return meta?.assets?.find((p: Row) => p.id === value)?.code ?? value;
-    if (/^(\d{4}-\d{2}-\d{2})T/.test(value)) return formatDate(value);
-    return states[value] ?? (priorities as Row)[value] ?? value;
-  };
-  const details = (event: Row) => {
-    try {
-      const parsed = JSON.parse(event.detail);
-      return Object.entries(parsed)
-        .filter(
-          ([k, v]) =>
-            v !== "" && v !== null && !["before", "ticket_id"].includes(k),
-        )
-        .map(
-          ([k, v]) =>
-            `${labels[k] ?? k}: ${typeof v === "object" ? JSON.stringify(v) : describe(k, v)}`,
-        )
-        .join(" · ");
-    } catch {
-      return event.detail;
-    }
-  };
-  return (
-    <div className="timeline">
-      {events.length ? (
-        events.map((e: Row) => (
-          <div className="timeline-item" key={e.id}>
-            <span className="timeline-node" />
-            <div>
-              <div className="timeline-heading">
-                <strong>{e.action.replaceAll("_", " ")}</strong>
-                <time>{formatDate(e.created_at)}</time>
-              </div>
-              <p>{details(e)}</p>
-              <small>{e.actor_name ?? "Registro del sistema"}</small>
-            </div>
-          </div>
-        ))
-      ) : (
-        <p className="empty-inline">Aún no hay eventos registrados.</p>
-      )}
-    </div>
   );
 }
 export default function Workspace({
@@ -364,7 +294,7 @@ export default function Workspace({
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success("Exportación generada.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo exportar.");
@@ -572,134 +502,36 @@ export default function Workspace({
                     />
                   )}
                   {view === "tickets" && (
-                    <section className="panel">
-                      <div className="toolbar">
-                        <Tabs
-                          value={queue}
-                          onValueChange={(v) => {
-                            setQueue(v);
-                            setPage(1);
-                          }}
-                        >
-                          <TabsList>
-                            <TabsTrigger value="all">Todos</TabsTrigger>
-                            <TabsTrigger value="mine">
-                              Mis asignados
-                            </TabsTrigger>
-                            <TabsTrigger value="overdue">
-                              Fuera de plazo
-                            </TabsTrigger>
-                          </TabsList>
-                        </Tabs>
-                        <Button
-                          variant="outline"
-                          onClick={() => download("tickets")}
-                        >
-                          <Download size={16} /> Exportar
-                        </Button>
-                      </div>
-                      <div className="filter-row">
-                        <SearchBox value={q} onChange={setQ} />
-                        <Choice
-                          value={status}
-                          label="Filtrar por estado"
-                          options={[
-                            ["", "Todos los estados"],
-                            ...Object.keys(transitionMap).map(
-                              (v) => [v, states[v]] as [string, string],
-                            ),
-                          ]}
-                          onChange={(v) => {
-                            setStatus(v);
-                            setPage(1);
-                          }}
-                        />
-                        <Choice
-                          value={priority}
-                          label="Filtrar por prioridad"
-                          options={[
-                            ["", "Todas las prioridades"],
-                            ...Object.entries(priorities),
-                          ]}
-                          onChange={(v) => {
-                            setPriority(v);
-                            setPage(1);
-                          }}
-                        />
-                        {assetFilter && (
-                          <Button
-                            variant="ghost"
-                            onClick={() => setAssetFilter("")}
-                          >
-                            Quitar filtro de activo <X size={14} />
-                          </Button>
-                        )}
-                      </div>
-                      <TicketRows rows={data.rows} open={openTicket} />
-                      <Pager data={data} page={page} setPage={setPage} />
-                    </section>
+                    <TicketsView
+                      data={data}
+                      q={q}
+                      setQ={setQ}
+                      status={status}
+                      setStatus={setStatus}
+                      priority={priority}
+                      setPriority={setPriority}
+                      assetFilter={assetFilter}
+                      setAssetFilter={setAssetFilter}
+                      queue={queue}
+                      setQueue={setQueue}
+                      page={page}
+                      setPage={setPage}
+                      download={download}
+                      openTicket={openTicket}
+                    />
                   )}
                   {view === "assets" && (
-                    <section className="panel">
-                      <div className="toolbar">
-                        <SearchBox
-                          value={q}
-                          onChange={setQ}
-                          label="Buscar código, serie o ubicación"
-                        />
-                        <span className="muted-text">
-                          {data.total} activos registrados
-                        </span>
-                      </div>
-                      <DataTable
-                        headers={[
-                          "Activo",
-                          "Modelo / Serie",
-                          "Ubicación",
-                          "Estado",
-                          "Acciones",
-                        ]}
-                        rows={data.rows}
-                        render={(a) => (
-                          <>
-                            <TableCell>
-                              <span className="asset-code">{a.code}</span>
-                              <strong className="table-title">{a.name}</strong>
-                            </TableCell>
-                            <TableCell>
-                              {a.model}
-                              <small className="subline">{a.serial}</small>
-                            </TableCell>
-                            <TableCell>{a.location}</TableCell>
-                            <TableCell>
-                              <Badge value={a.status} />
-                            </TableCell>
-                            <TableCell>
-                              <div className="row-actions">
-                                <button
-                                  className="text-link"
-                                  onClick={() => {
-                                    navigate("tickets");
-                                    setAssetFilter(a.id);
-                                  }}
-                                >
-                                  Ver historial <ArrowUpRight size={14} />
-                                </button>
-                                {manager && (
-                                  <button
-                                    className="text-link"
-                                    onClick={() => form("asset.save", a)}
-                                  >
-                                    Editar
-                                  </button>
-                                )}
-                              </div>
-                            </TableCell>
-                          </>
-                        )}
-                      />
-                      <Pager data={data} page={page} setPage={setPage} />
-                    </section>
+                    <AssetsView
+                      data={data}
+                      q={q}
+                      setQ={setQ}
+                      page={page}
+                      setPage={setPage}
+                      manager={manager}
+                      navigate={navigate}
+                      setAssetFilter={setAssetFilter}
+                      form={form}
+                    />
                   )}
                   {view === "activities" && (
                     <section className="panel">
@@ -1142,19 +974,12 @@ export default function Workspace({
                     </div>
                   )}
                   {view === "audit" && (
-                    <section className="panel">
-                      <div className="panel-heading">
-                        <div>
-                          <h2>Registro de cambios</h2>
-                          <p>
-                            Los eventos no se editan ni se eliminan desde la
-                            aplicación.
-                          </p>
-                        </div>
-                      </div>
-                      <EventList events={data.rows} meta={meta} />
-                      <Pager data={data} page={page} setPage={setPage} />
-                    </section>
+                    <AuditView
+                      data={data}
+                      meta={meta}
+                      page={page}
+                      setPage={setPage}
+                    />
                   )}
                   {view === "members" && (
                     <section className="panel">
