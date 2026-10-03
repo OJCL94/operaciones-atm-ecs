@@ -42,6 +42,7 @@ import {
   goalEvaluate,
 } from "./handlers/control";
 import { periodCreate, measurementCreate } from "./handlers/investigation";
+import { memberSave } from "./handlers/member";
 const uuid = () => crypto.randomUUID();
 export class Service implements HandlerContext {
   constructor(
@@ -238,71 +239,8 @@ export class Service implements HandlerContext {
         return periodCreate(this, input);
       case "measurement.create":
         return measurementCreate(this, input);
-      case "member.save": {
-        ensure(
-          a.role === "admin" && a.actualAdmin !== false,
-          "Solo el administrador real gestiona accesos.",
-          403,
-        );
-        ensure(d === 0, "Los accesos se administran en el entorno real.");
-        const p = z
-          .object({
-            id: optId,
-            version: version.optional(),
-            email: z
-              .string()
-              .trim()
-              .email()
-              .max(200)
-              .transform((v) => v.toLowerCase()),
-            name: short,
-            role: z.enum([
-              "admin",
-              "supervisor",
-              "tecnico",
-              "solicitante",
-              "auditor",
-            ]),
-            active: z.boolean(),
-          })
-          .parse(input);
-        if (p.id) {
-          const member = await this.entity("members", p.id);
-          ensure(
-            p.id !== a.id || (p.role === "admin" && p.active),
-            "No puedes retirar tu propio acceso administrativo.",
-          );
-          ensure(
-            member.email === p.email,
-            "El correo de un acceso existente es inmutable.",
-          );
-          ensure(p.version, "Falta versión");
-          await this.update(
-            "members",
-            member,
-            p.version,
-            { name: p.name, role: p.role, active: Number(p.active) },
-            "acceso_actualizado",
-            JSON.stringify(p),
-          );
-          return { id: p.id };
-        }
-        const mid = uuid();
-        await this.create(
-          "members",
-          {
-            id: mid,
-            email: p.email,
-            name: p.name,
-            role: p.role,
-            active: Number(p.active),
-            demo: 0,
-          },
-          "acceso_creado",
-          p.email,
-        );
-        return { id: mid };
-      }
+      case "member.save":
+        return memberSave(this, input);
       default:
         throw new DomainError("Operación desconocida", 404);
     }
