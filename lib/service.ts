@@ -33,6 +33,7 @@ import {
   ticketNote,
   reviewCreate,
 } from "./handlers/ticket";
+import { activitySave, activityTransition } from "./handlers/activity";
 const uuid = () => crypto.randomUUID();
 export class Service implements HandlerContext {
   constructor(
@@ -209,129 +210,10 @@ export class Service implements HandlerContext {
         return ticketNote(this, input);
       case "review.create":
         return reviewCreate(this, input);
-      case "activity.save": {
-        this.manage();
-        const p = z
-          .object({
-            id: optId,
-            version: version.optional(),
-            asset_id: id,
-            ticket_id: optId,
-            title: short,
-            description: z.string().trim().max(5000).default(""),
-            owner_id: optId,
-            planned_start: z.union([date, z.literal("")]).optional(),
-            planned_end: z.union([date, z.literal("")]).optional(),
-          })
-          .parse(input);
-        const asset = await this.entity("assets", p.asset_id);
-        ensure(asset.status !== "retirado", "El activo está retirado.");
-        if (p.ticket_id) {
-          const tk = await this.entity("tickets", p.ticket_id);
-          ensure(
-            tk.asset_id === p.asset_id,
-            "El ticket pertenece a otro activo.",
-          );
-          ensure(
-            !["resuelto", "cerrado"].includes(tk.status),
-            "No se pueden añadir tareas a un ticket resuelto.",
-          );
-        }
-        await this.validAssignee(p.owner_id ?? null);
-        const planned = !!p.planned_start || !!p.planned_end;
-        ensure(
-          !planned || (p.planned_start && p.planned_end && p.owner_id),
-          "La planificación requiere inicio, fin y responsable.",
-        );
-        ensure(
-          !planned || p.planned_end! > p.planned_start!,
-          "El fin previsto debe ser posterior al inicio.",
-        );
-        const values = {
-          asset_id: p.asset_id,
-          ticket_id: p.ticket_id ?? null,
-          title: p.title,
-          description: p.description,
-          owner_id: p.owner_id ?? null,
-          planned_start: p.planned_start || null,
-          planned_end: p.planned_end || null,
-          planned_at: planned ? t : null,
-          status: planned ? "planificada" : "pendiente",
-        };
-        if (p.id) {
-          const old = await this.entity("activities", p.id);
-          ensure(
-            ["pendiente", "planificada"].includes(old.status),
-            "Solo se pueden editar actividades pendientes o planificadas.",
-          );
-          ensure(p.version, "Falta versión");
-          values.planned_at = planned ? (old.planned_at ?? t) : null;
-          await this.update(
-            "activities",
-            old,
-            p.version,
-            values,
-            "actividad_planificada",
-            JSON.stringify({ ...values, before: old }),
-          );
-          return { id: p.id };
-        }
-        const actid = uuid();
-        await this.create(
-          "activities",
-          { id: actid, demo: d, ...values, created_at: t },
-          "actividad_creada",
-          JSON.stringify(values),
-        );
-        return { id: actid };
-      }
-      case "activity.transition": {
-        const p = z
-          .object({
-            id,
-            version,
-            status: z.enum(["en_curso", "completada", "cancelada"]),
-            evidence: memo,
-          })
-          .parse(input);
-        const act = await this.entity("activities", p.id);
-        this.activityAccess(act, true);
-        const map: Record<string, string[]> = {
-          pendiente: ["cancelada"],
-          planificada: ["en_curso", "cancelada"],
-          en_curso: ["completada", "cancelada"],
-        };
-        ensure(
-          map[act.status]?.includes(p.status),
-          "Transición de actividad no permitida.",
-          409,
-        );
-        if (p.status === "cancelada") this.manage();
-        if (p.status === "en_curso") {
-          const lacking = await this.one(
-            "SELECT COUNT(*) n FROM resource_requirements r WHERE r.activity_id=? AND COALESCE((SELECT SUM(quantity) FROM resource_allocations WHERE requirement_id=r.id),0)<r.quantity",
-            [p.id],
-          );
-          ensure(!lacking?.n, "Faltan recursos por asignar para iniciar.");
-        }
-        await this.update(
-          "activities",
-          act,
-          p.version,
-          {
-            status: p.status,
-            evidence: p.evidence,
-            ...(p.status === "en_curso"
-              ? { started_at: t }
-              : p.status === "completada"
-                ? { completed_at: t }
-                : {}),
-          },
-          "actividad_" + p.status,
-          p.evidence,
-        );
-        return { id: p.id };
-      }
+      case "activity.save":
+        return activitySave(this, input);
+      case "activity.transition":
+        return activityTransition(this, input);
       case "resource.require": {
         this.manage();
         const p = z
