@@ -1,19 +1,14 @@
 import { Field, FormSpec, Row } from "../ui";
 import { text, area, when, num, choose } from "./fields";
-import { membersOf, assetsOf, isManager } from "./shared";
+import { formContext, formDefaults } from "./context";
 import { localInput } from "../ui";
 
 // Extraído de app/forms.ts (R4): esta especificación conserva exactamente
 // el comportamiento original del caso "activity.save" dentro de makeForm. Ningún
 // campo, título, descripción ni transformación fue modificado.
 export function activitySave(row: Row, meta: Row, extra: Row = {}): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title = row.id ? "Planificar actividad" : "Registrar actividad";
   for (const f of ["planned_start", "planned_end"])
     initial[f] = localInput(row[f]);
@@ -39,13 +34,8 @@ export function activityTransition(
   meta: Row,
   extra: Row = {},
 ): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title =
     row.status === "completada"
       ? "Completar actividad"

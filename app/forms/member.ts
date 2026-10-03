@@ -1,19 +1,14 @@
 import { Field, FormSpec, Row } from "../ui";
 import { text, area, when, num, choose } from "./fields";
-import { membersOf, assetsOf, isManager } from "./shared";
+import { formContext, formDefaults } from "./context";
 import { roles } from "@/lib/domain";
 
 // Extraído de app/forms.ts (R4): esta especificación conserva exactamente
 // el comportamiento original del caso "member.password" dentro de makeForm. Ningún
 // campo, título, descripción ni transformación fue modificado.
 export function memberPassword(row: Row, meta: Row, extra: Row = {}): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title = "Establecer contraseña";
   fields = [
     {
@@ -31,13 +26,8 @@ export function memberPassword(row: Row, meta: Row, extra: Row = {}): FormSpec {
 // el comportamiento original del caso "self.password" dentro de makeForm. Ningún
 // campo, título, descripción ni transformación fue modificado.
 export function selfPassword(row: Row, meta: Row, extra: Row = {}): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title = "Cambiar mi contraseña";
   fields = [
     { ...text("current_password", "Contraseña actual"), type: "password" },
@@ -55,13 +45,8 @@ export function selfPassword(row: Row, meta: Row, extra: Row = {}): FormSpec {
 // el comportamiento original del caso "member.save" dentro de makeForm. Ningún
 // campo, título, descripción ni transformación fue modificado.
 export function memberSave(row: Row, meta: Row, extra: Row = {}): FormSpec {
-  const members = membersOf(meta),
-    assets = assetsOf(meta),
-    manager = isManager(meta);
-  let initial: Row = { ...row };
-  let title = "Registrar información";
-  let fields: Field[] = [];
-  let description: string | undefined;
+  const { members, assets, manager } = formContext(meta);
+  let { initial, title, fields, description } = formDefaults(row);
   title = row.id ? "Editar acceso" : "Registrar acceso";
   initial.active = row.active === 0 ? "false" : "true";
   initial.role = row.role ?? "tecnico";
