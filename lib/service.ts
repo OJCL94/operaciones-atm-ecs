@@ -10,7 +10,8 @@ import {
   transitionMap,
   indicatorDefinitions,
 } from "./domain";
-export type Row = Record<string, any>;
+import type { Row, HandlerContext } from "./types";
+export type { Row } from "./types";
 const id = z.string().min(1).max(100),
   short = z.string().trim().min(3).max(160),
   memo = z.string().trim().min(5).max(5000),
@@ -23,9 +24,9 @@ const optId = z
   .union([id, z.literal("")])
   .optional()
   .transform((v) => v || null);
-const now = () => new Date().toISOString();
+import { now } from "./clock";
 const uuid = () => crypto.randomUUID();
-export class Service {
+export class Service implements HandlerContext {
   constructor(
     public db: SqlDatabase,
     public actor: Actor,
