@@ -1,5 +1,6 @@
-import { Service, Row } from "./service";
+import { Service } from "./service";
 import { ensure, indicatorDefinitions } from "./domain";
+import { indicatorStrategies, type ReportContext } from "./report-indicators";
 export async function report(s: Service, from: string, to: string) {
   s.research();
   ensure(
@@ -86,96 +87,37 @@ export async function report(s: Service, from: string, to: string) {
       [d, from, end, to],
     ),
   ]);
-  const percent = (n: any, den: any) =>
-    den ? Number(((100 * (n || 0)) / den).toFixed(2)) : null;
   const days = Math.max(1, (Date.parse(to) - Date.parse(from) + 1) / 86400000);
-  const metrics: Record<string, Row> = {
-    registro: {
-      value: Number(((tickets?.n ?? 0) / (days / 7)).toFixed(2)),
-      numerator: tickets?.n,
-      denominator: Number((days / 7).toFixed(4)),
-      sample_size: tickets?.n,
-    },
-    categoria: {
-      value: percent(category?.correct, category?.reviewed),
-      numerator: category?.correct ?? 0,
-      denominator: category?.reviewed ?? 0,
-      coverage: category?.reviewed ?? 0,
-    },
-    actualizacion: {
-      value: percent(updates?.n, tickets?.n),
-      numerator: updates?.n,
-      denominator: tickets?.n,
-    },
-    monitoreo: {
-      value: percent(monitor?.n, tickets?.n),
-      numerator: monitor?.n,
-      denominator: tickets?.n,
-    },
-    respuesta: {
-      value: tickets?.response ?? null,
-      sample_size: tickets?.answered ?? 0,
-      pending: (tickets?.n ?? 0) - (tickets?.answered ?? 0),
-    },
-    resolucion: {
-      value: tickets?.resolution ?? null,
-      sample_size: tickets?.resolved ?? 0,
-      pending: (tickets?.n ?? 0) - (tickets?.resolved ?? 0),
-    },
-    planificacion: {
-      value: percent(activities?.planned, activities?.n),
-      numerator: activities?.planned ?? 0,
-      denominator: activities?.n,
-    },
-    recursos: {
-      value: percent(resources?.covered, resources?.n),
-      numerator: resources?.covered ?? 0,
-      denominator: resources?.n,
-    },
-    cronograma: {
-      value: percent(schedule?.ontime, schedule?.n),
-      numerator: schedule?.ontime ?? 0,
-      denominator: schedule?.n,
-    },
-    ejecucion: {
-      value: execution?.hours ?? null,
-      sample_size: execution?.n ?? 0,
-    },
-    tareas: {
-      value: percent(activities?.completed, activities?.n),
-      numerator: activities?.completed ?? 0,
-      denominator: activities?.n,
-    },
-    metas: {
-      value: percent(goals?.achieved, goals?.n),
-      numerator: goals?.achieved ?? 0,
-      denominator: goals?.n,
-    },
-    desviaciones: {
-      value: percent(controlReviews?.deviations, controlReviews?.n),
-      numerator: controlReviews?.deviations ?? 0,
-      denominator: controlReviews?.n,
-    },
-    correctivas: {
-      value: percent(corrections?.ontime, corrections?.n),
-      numerator: corrections?.ontime ?? 0,
-      denominator: corrections?.n,
-    },
+  const context: ReportContext = {
+    days,
+    tickets,
+    updates,
+    category,
+    monitor,
+    activities,
+    resources,
+    schedule,
+    execution,
+    goals,
+    controlReviews,
+    corrections,
   };
   return {
     from,
     to,
     demo: d,
     generated_at: new Date().toISOString(),
-    metrics: indicatorDefinitions.map(([id, label, unit, formula]) => ({
-      id,
-      label,
-      unit,
-      formula,
-      ...metrics[id],
-      value:
-        metrics[id].value == null ? null : Number(metrics[id].value.toFixed(2)),
-      sample_size: metrics[id].sample_size ?? metrics[id].denominator ?? 0,
-    })),
+    metrics: indicatorDefinitions.map(([id, label, unit, formula]) => {
+      const m = indicatorStrategies[id](context);
+      return {
+        id,
+        label,
+        unit,
+        formula,
+        ...m,
+        value: m.value == null ? null : Number(m.value.toFixed(2)),
+        sample_size: m.sample_size ?? m.denominator ?? 0,
+      };
+    }),
   };
 }
