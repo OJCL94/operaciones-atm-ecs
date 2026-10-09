@@ -5,13 +5,13 @@ import { z } from "zod";
 import { uuid } from "../clock";
 import { actorContext } from "./context";
 import { ensure, isManager, indicatorDefinitions } from "../domain";
-import type { HandlerContext, Row } from "../types";
+import type { HandlerContext, ActionResult } from "../types";
 import { id, optId, short, memo, date, version } from "./shared-schemas";
 
 export async function periodCreate(
   svc: HandlerContext,
   input: unknown,
-): Promise<Row> {
+): Promise<ActionResult> {
   const { a, d, t } = actorContext(svc);
   svc.research();
   const p = z
@@ -41,7 +41,7 @@ export async function periodCreate(
 export async function measurementCreate(
   svc: HandlerContext,
   input: unknown,
-): Promise<Row> {
+): Promise<ActionResult> {
   const { a, d, t } = actorContext(svc);
   svc.research();
   const p = z

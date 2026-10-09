@@ -5,13 +5,14 @@ import { z } from "zod";
 import { uuid } from "../clock";
 import { actorContext } from "./context";
 import { ensure, isManager } from "../domain";
-import type { HandlerContext, Row } from "../types";
+import type { HandlerContext, ActionResult } from "../types";
+import type { Activity } from "../entities";
 import { id, optId, short, memo, date, version } from "./shared-schemas";
 
 export async function activitySave(
   svc: HandlerContext,
   input: unknown,
-): Promise<Row> {
+): Promise<ActionResult> {
   const { a, d, t } = actorContext(svc);
   svc.manage();
   const p = z
@@ -47,7 +48,7 @@ export async function activitySave(
     !planned || p.planned_end! > p.planned_start!,
     "El fin previsto debe ser posterior al inicio.",
   );
-  const values = {
+  const values: Partial<Activity> = {
     asset_id: p.asset_id,
     ticket_id: p.ticket_id ?? null,
     title: p.title,
@@ -88,7 +89,7 @@ export async function activitySave(
 export async function activityTransition(
   svc: HandlerContext,
   input: unknown,
-): Promise<Row> {
+): Promise<ActionResult> {
   const { a, d, t } = actorContext(svc);
   const p = z
     .object({
