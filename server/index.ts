@@ -4,7 +4,7 @@
 // api-router.ts). Este archivo solo arma el servidor y conecta las piezas.
 import http from "node:http";
 import { config } from "./config";
-import { raw } from "./database";
+import { raw } from "./container";
 import { bootstrap } from "./auth";
 import { ensure } from "../lib/domain";
 import { applySecurityHeaders } from "./security-headers";

@@ -1,7 +1,7 @@
 import { scrypt, randomBytes, timingSafeEqual, createHash } from "node:crypto";
 import { promisify } from "node:util";
 import { z } from "zod";
-import { raw, db } from "./database";
+import { db, members, sessions } from "./container";
 import { config } from "./config";
 import { Service } from "../lib/service";
 import { Actor, ensure } from "../lib/domain";
@@ -44,11 +44,7 @@ function token(request: Request) {
 export function sessionMember(request: Request) {
   const t = token(request);
   ensure(/^[a-f0-9]{64}$/.test(t), "Inicia sesión para acceder.", 401);
-  const m = raw
-    .prepare(
-      "SELECT m.* FROM sessions s JOIN members m ON m.id=s.member_id WHERE s.token_hash=? AND s.expires_at>? AND m.active=1 AND m.demo=0",
-    )
-    .get(hash(t), Date.now());
+  const m = sessions.findActiveMemberByTokenHash(hash(t), Date.now());
   ensure(m, "La sesión venció. Vuelve a iniciar sesión.", 401);
   return m as unknown as Actor;
 }
@@ -69,9 +65,7 @@ export async function context(request: Request) {
       "La simulación de roles requiere administrador y entorno de demostración.",
       403,
     );
-    const sim = raw
-      .prepare("SELECT * FROM members WHERE id=? AND demo=1")
-      .get("demo-" + role);
+    const sim = members.findDemoProfile(role);
     ensure(sim, "Perfil no disponible.");
     actor = { ...sim, actualAdmin: false } as Actor;
   }
@@ -102,7 +96,7 @@ export async function login(body: any, ip: string) {
   const keys = [hash("ip:" + ip), hash("account:" + input.email)];
   const now = Date.now();
   for (const k of keys) {
-    const a = raw.prepare("SELECT * FROM login_attempts WHERE key=?").get(k);
+    const a = members.loginAttempts(k);
     ensure(
       !a || Number(a.blocked_until) <= now,
       "Demasiados intentos. Espera 15 minutos.",
@@ -116,11 +110,7 @@ export async function login(body: any, ip: string) {
   );
   activeLogins++;
   try {
-    const member = raw
-      .prepare(
-        "SELECT m.*,c.password_hash FROM members m JOIN credentials c ON c.member_id=m.id WHERE m.email=? AND m.demo=0 AND m.active=1",
-      )
-      .get(input.email);
+    const member = members.findByEmailWithCredential(input.email);
     const fallback =
       "scrypt$65536$8$2$00000000000000000000000000000000$" + "00".repeat(64);
     const valid = await verify(
@@ -129,31 +119,20 @@ export async function login(body: any, ip: string) {
     );
     if (!member || !valid) {
       for (const k of keys) {
-        const prev = raw
-          .prepare("SELECT * FROM login_attempts WHERE key=?")
-          .get(k);
+        const prev = members.loginAttempts(k);
         const n =
           prev && now - Number(prev.updated_at) < 900000
             ? Number(prev.failures) + 1
             : 1;
-        raw
-          .prepare(
-            "INSERT INTO login_attempts VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET failures=excluded.failures,blocked_until=excluded.blocked_until,updated_at=excluded.updated_at",
-          )
-          .run(k, n, n >= 5 ? now + 900000 : 0, now);
+        members.recordLoginFailure(k, n, n >= 5 ? now + 900000 : 0, now);
       }
       ensure(false, "Correo o contraseña incorrectos.", 401);
     }
-    for (const k of keys)
-      raw.prepare("DELETE FROM login_attempts WHERE key=?").run(k);
-    raw.prepare("DELETE FROM sessions WHERE expires_at<=?").run(now);
-    raw
-      .prepare("DELETE FROM login_attempts WHERE updated_at<?")
-      .run(now - 86400000);
+    for (const k of keys) members.clearLoginAttempts(k);
+    sessions.deleteExpired(now);
+    members.pruneLoginAttempts(now - 86400000);
     const value = randomBytes(32).toString("hex");
-    raw
-      .prepare("INSERT INTO sessions VALUES(?,?,?,?)")
-      .run(hash(value), String(member.id), now, now + 8 * 3600000);
+    sessions.create(hash(value), String(member.id), now, now + 8 * 3600000);
     await new Service(db, member as unknown as Actor, config.demo ? 1 : 0)
       .event(
         "members",
@@ -168,9 +147,7 @@ export async function login(body: any, ip: string) {
   }
 }
 export function logout(request: Request) {
-  raw
-    .prepare("DELETE FROM sessions WHERE token_hash=?")
-    .run(hash(token(request)));
+  sessions.deleteByTokenHash(hash(token(request)));
   return cookie("", 0);
 }
 export async function passwordAction(
@@ -197,19 +174,15 @@ export async function passwordAction(
     "La contraseña de demostración es pública y no se modifica.",
     403,
   );
-  const target = raw
-    .prepare("SELECT * FROM members WHERE id=? AND demo=0")
-    .get(id);
+  const target = members.findRealById(id);
   ensure(target, "Cuenta no encontrada.", 404);
   if (self) {
-    const stored = raw
-      .prepare("SELECT password_hash FROM credentials WHERE member_id=?")
-      .get(id);
+    const storedHash = members.findCredentialHash(id);
     ensure(
-      stored &&
+      storedHash &&
         (await verify(
           z.string().max(128).parse(data.current_password),
-          String(stored.password_hash),
+          storedHash,
         )),
       "La contraseña actual no coincide.",
       401,
@@ -234,7 +207,7 @@ export async function passwordAction(
 }
 export async function bootstrap(email: string, name: string, password: string) {
   ensure(
-    !raw.prepare("SELECT id FROM members WHERE demo=0").get(),
+    !members.hasRealAdmin(),
     "Ya existe un administrador. Gestiona las cuentas desde el sistema.",
     409,
   );
