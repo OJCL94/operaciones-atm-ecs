@@ -2,7 +2,6 @@
 // comportamiento original del caso "asset.save" dentro de Service.execute.
 // Ningún criterio de autorización, validación ni persistencia fue modificado.
 import { z } from "zod";
-import { uuid } from "../clock";
 import { actorContext } from "./context";
 import { ensure, isManager } from "../domain";
 import type { HandlerContext, ActionResult } from "../types";
@@ -46,7 +45,7 @@ export async function assetSave(
     );
     return { id: aid };
   }
-  const aid2 = uuid();
+  const aid2 = svc.ids.uuid();
   await svc.create(
     "assets",
     { id: aid2, demo: d, ...data, created_at: t },

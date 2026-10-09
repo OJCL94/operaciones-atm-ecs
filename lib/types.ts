@@ -7,6 +7,7 @@
 import type { SqlDatabase, SqlStatement } from "./database-types";
 import type { Actor } from "./domain";
 import type { EntityByTable, Ticket, Activity } from "./entities";
+import type { Clock, IdGenerator } from "./clock";
 
 // Fila genérica: sigue existiendo para el resultado de consultas SQL
 // agregadas o ad-hoc (COUNT, SUM, JOIN entre varias tablas) que no
@@ -28,6 +29,10 @@ export interface HandlerContext {
   readonly db: SqlDatabase;
   readonly actor: Actor;
   readonly demo: number;
+  // Puertos inyectados (R7): ningún manejador importa Date/crypto
+  // directamente; piden la hora o un id a través de este contrato.
+  readonly clock: Clock;
+  readonly ids: IdGenerator;
   stmt(sql: string, args?: unknown[]): SqlStatement;
   all<T extends Row = Row>(sql: string, args?: unknown[]): Promise<T[]>;
   one<T extends Row = Row>(sql: string, args?: unknown[]): Promise<T | null>;

@@ -2,7 +2,6 @@
 // comportamiento original del caso "ticket.create" dentro de Service.execute.
 // Ningún criterio de autorización, validación ni persistencia fue modificado.
 import { z } from "zod";
-import { uuid } from "../clock";
 import { actorContext } from "./context";
 import {
   ensure,
@@ -37,7 +36,7 @@ export async function ticketCreate(
     svc.manage();
     await svc.validAssignee(p.assignee_id);
   }
-  const tid = uuid();
+  const tid = svc.ids.uuid();
   const code =
     "TK-" +
     new Date().getFullYear().toString().slice(-2) +
@@ -255,7 +254,7 @@ export async function reviewCreate(
   await svc.create(
     "reviews",
     {
-      id: uuid(),
+      id: svc.ids.uuid(),
       demo: d,
       ticket_id: p.kind === "operativa" ? null : row.id,
       activity_id: p.kind === "operativa" ? row.id : null,

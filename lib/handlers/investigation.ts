@@ -2,7 +2,6 @@
 // comportamiento original del caso "period.create" dentro de Service.execute.
 // Ningún criterio de autorización, validación ni persistencia fue modificado.
 import { z } from "zod";
-import { uuid } from "../clock";
 import { actorContext } from "./context";
 import { ensure, isManager, indicatorDefinitions } from "../domain";
 import type { HandlerContext, ActionResult } from "../types";
@@ -29,7 +28,7 @@ export async function periodCreate(
     [d, p.end_at, p.start_at],
   );
   ensure(!clash, "Los períodos de estudio no pueden solaparse.", 409);
-  const pid = uuid();
+  const pid = svc.ids.uuid();
   await svc.create(
     "study_periods",
     { id: pid, demo: d, ...p, created_at: t },
@@ -82,7 +81,7 @@ export async function measurementCreate(
       "Registra valor y tamaño de muestra positivo.",
     );
   }
-  const mid = uuid();
+  const mid = svc.ids.uuid();
   await svc.create(
     "measurements",
     { id: mid, ...p, value, actor_id: a.id, created_at: t },
