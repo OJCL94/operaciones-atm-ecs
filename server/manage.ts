@@ -1,7 +1,7 @@
 import { createInterface } from "node:readline/promises";
 import fs from "node:fs";
 import path from "node:path";
-import { raw } from "./database";
+import { raw } from "./container";
 import { databasePath, config } from "./config";
 import { bootstrap } from "./auth";
 async function hiddenPassword() {

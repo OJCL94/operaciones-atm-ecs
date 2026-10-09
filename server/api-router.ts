@@ -4,7 +4,7 @@
 // patrón de tabla/registro que lib/handlers/registry.ts (R1) y
 // app/forms/registry.ts (R4).
 import { config } from "./config";
-import { raw } from "./database";
+import { raw } from "./container";
 import { login, logout, sessionMember } from "./auth";
 import { GET } from "./data";
 import { POST } from "./actions";
