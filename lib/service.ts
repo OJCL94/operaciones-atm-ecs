@@ -4,7 +4,7 @@ import { z } from "zod";
 // Validador usado por list() más abajo, para los módulos "ticket" y "activity"
 // (los demás validadores de entrada viven en lib/handlers/shared-schemas.ts).
 const id = z.string().min(1).max(100);
-import type { Row, HandlerContext } from "./types";
+import type { Row, HandlerContext, EntityOf } from "./types";
 export type { Row } from "./types";
 import { now } from "./clock";
 import { handlers } from "./handlers/registry";
@@ -17,13 +17,19 @@ export class Service implements HandlerContext {
   stmt(sql: string, args: unknown[] = []) {
     return this.db.prepare(sql).bind(...args);
   }
-  async all(sql: string, args: unknown[] = []): Promise<Row[]> {
-    return (await this.stmt(sql, args).all()).results as Row[];
+  async all<T extends Row = Row>(
+    sql: string,
+    args: unknown[] = [],
+  ): Promise<T[]> {
+    return (await this.stmt(sql, args).all()).results as T[];
   }
-  async one(sql: string, args: unknown[] = []): Promise<Row | null> {
-    return this.stmt(sql, args).first<Row>();
+  async one<T extends Row = Row>(
+    sql: string,
+    args: unknown[] = [],
+  ): Promise<T | null> {
+    return this.stmt(sql, args).first<T>();
   }
-  async entity(table: string, idValue: string) {
+  async entity<T extends string>(table: T, idValue: string) {
     ensure(
       [
         "assets",
@@ -42,7 +48,7 @@ export class Service implements HandlerContext {
       this.demo,
     ]);
     ensure(row, "Registro no encontrado", 404);
-    return row;
+    return row as EntityOf<T>;
   }
   manage() {
     ensure(
@@ -108,7 +114,12 @@ export class Service implements HandlerContext {
       ],
     );
   }
-  async create(table: string, data: Row, action: string, detail: string) {
+  async create<T extends string>(
+    table: T,
+    data: Partial<Row>,
+    action: string,
+    detail: string,
+  ) {
     const fields = Object.keys(data);
     await this.db.batch([
       this.stmt(
@@ -123,13 +134,13 @@ export class Service implements HandlerContext {
         table === "tickets" ? data.id : (data.ticket_id ?? null),
       ),
     ]);
-    return data.id;
+    return data.id as string;
   }
-  async update(
-    table: string,
+  async update<T extends string>(
+    table: T,
     row: Row,
     v: number,
-    values: Row,
+    values: Partial<Row>,
     action: string,
     detail: string,
   ) {
@@ -153,7 +164,7 @@ export class Service implements HandlerContext {
       "El registro cambió en otra sesión. Actualiza la vista antes de guardar.",
       409,
     );
-    return row.id;
+    return row.id as string;
   }
   async validAssignee(memberId: string | null) {
     if (!memberId) return;
