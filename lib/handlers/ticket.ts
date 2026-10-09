@@ -11,13 +11,14 @@ import {
   deadlines,
   transitionMap,
 } from "../domain";
-import type { HandlerContext, Row } from "../types";
+import type { HandlerContext, ActionResult } from "../types";
+import type { Ticket } from "../entities";
 import { id, optId, short, memo, date, version } from "./shared-schemas";
 
 export async function ticketCreate(
   svc: HandlerContext,
   input: unknown,
-): Promise<Row> {
+): Promise<ActionResult> {
   const { a, d, t } = actorContext(svc);
   svc.write();
   const p = z
@@ -66,7 +67,7 @@ export async function ticketCreate(
 export async function ticketAssign(
   svc: HandlerContext,
   input: unknown,
-): Promise<Row> {
+): Promise<ActionResult> {
   const { a, d, t } = actorContext(svc);
   svc.manage();
   const p = z
@@ -113,7 +114,7 @@ export async function ticketAssign(
 export async function ticketTransition(
   svc: HandlerContext,
   input: unknown,
-): Promise<Row> {
+): Promise<ActionResult> {
   const { a, d, t } = actorContext(svc);
   const p = z
     .object({
@@ -169,7 +170,7 @@ export async function ticketTransition(
       "Registra una primera respuesta técnica antes de resolver.",
     );
   }
-  const values: Row = { status: p.status, updated_at: t };
+  const values: Partial<Ticket> = { status: p.status, updated_at: t };
   if (p.status === "resuelto") {
     values.diagnosis = p.diagnosis;
     values.solution = p.solution;
@@ -204,7 +205,7 @@ export async function ticketTransition(
 export async function ticketNote(
   svc: HandlerContext,
   input: unknown,
-): Promise<Row> {
+): Promise<ActionResult> {
   const { a, d, t } = actorContext(svc);
   const p = z
     .object({
@@ -226,7 +227,7 @@ export async function ticketNote(
       "Solo el personal asignado registra respuestas y seguimiento.",
       403,
     );
-  const values: Row = { updated_at: t };
+  const values: Partial<Ticket> = { updated_at: t };
   if (p.type === "respuesta" && !ticket.first_response_at)
     values.first_response_at = t;
   await svc.update("tickets", ticket, p.version, values, p.type, p.note);
@@ -236,7 +237,7 @@ export async function ticketNote(
 export async function reviewCreate(
   svc: HandlerContext,
   input: unknown,
-): Promise<Row> {
+): Promise<ActionResult> {
   const { a, d, t } = actorContext(svc);
   svc.manage();
   const p = z
@@ -259,7 +260,7 @@ export async function reviewCreate(
       ticket_id: p.kind === "operativa" ? null : row.id,
       activity_id: p.kind === "operativa" ? row.id : null,
       kind: p.kind,
-      passed: Number(p.passed),
+      passed: Number(p.passed) as 0 | 1,
       evidence: p.evidence,
       actor_id: a.id,
       created_at: t,

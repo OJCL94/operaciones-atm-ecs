@@ -5,13 +5,13 @@ import { z } from "zod";
 import { uuid } from "../clock";
 import { actorContext } from "./context";
 import { ensure, isManager } from "../domain";
-import type { HandlerContext, Row } from "../types";
+import type { HandlerContext, ActionResult } from "../types";
 import { id, optId, short, memo, date, version } from "./shared-schemas";
 
 export async function controlCreate(
   svc: HandlerContext,
   input: unknown,
-): Promise<Row> {
+): Promise<ActionResult> {
   const { a, d, t } = actorContext(svc);
   svc.manage();
   const p = z
@@ -38,7 +38,7 @@ export async function controlCreate(
 export async function controlTransition(
   svc: HandlerContext,
   input: unknown,
-): Promise<Row> {
+): Promise<ActionResult> {
   const { a, d, t } = actorContext(svc);
   const p = z
     .object({
@@ -79,7 +79,7 @@ export async function controlTransition(
 export async function goalCreate(
   svc: HandlerContext,
   input: unknown,
-): Promise<Row> {
+): Promise<ActionResult> {
   const { a, d, t } = actorContext(svc);
   svc.manage();
   const p = z
@@ -106,7 +106,7 @@ export async function goalCreate(
 export async function goalEvaluate(
   svc: HandlerContext,
   input: unknown,
-): Promise<Row> {
+): Promise<ActionResult> {
   const { a, d, t } = actorContext(svc);
   svc.manage();
   const p = z

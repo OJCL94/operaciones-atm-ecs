@@ -1,7 +1,7 @@
 // Registro de manejadores (R1): sustituye el switch de 17 casos que vivía
 // dentro de Service.execute. Agregar una acción nueva significa añadir una
 // entrada aquí, no modificar execute() — Principio Abierto/Cerrado.
-import type { HandlerContext, Row } from "../types";
+import type { HandlerContext, ActionResult } from "../types";
 import { assetSave } from "./asset";
 import {
   ticketCreate,
@@ -21,7 +21,7 @@ import {
 import { periodCreate, measurementCreate } from "./investigation";
 import { memberSave } from "./member";
 
-export type Handler = (svc: HandlerContext, input: unknown) => Promise<Row>;
+export type Handler = (svc: HandlerContext, input: unknown) => Promise<ActionResult>;
 
 export const handlers: Record<string, Handler> = {
   "asset.save": assetSave,

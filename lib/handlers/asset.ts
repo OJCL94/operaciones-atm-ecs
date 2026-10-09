@@ -5,13 +5,13 @@ import { z } from "zod";
 import { uuid } from "../clock";
 import { actorContext } from "./context";
 import { ensure, isManager } from "../domain";
-import type { HandlerContext, Row } from "../types";
+import type { HandlerContext, ActionResult } from "../types";
 import { id, optId, short, memo, date, version } from "./shared-schemas";
 
 export async function assetSave(
   svc: HandlerContext,
   input: unknown,
-): Promise<Row> {
+): Promise<ActionResult> {
   const { a, d, t } = actorContext(svc);
   svc.manage();
   const p = z
