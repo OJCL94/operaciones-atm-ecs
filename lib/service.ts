@@ -6,13 +6,19 @@ import { z } from "zod";
 const id = z.string().min(1).max(100);
 import type { Row, HandlerContext, EntityOf } from "./types";
 export type { Row } from "./types";
-import { now } from "./clock";
+import { systemClock, systemIds, type Clock, type IdGenerator } from "./clock";
 import { handlers } from "./handlers/registry";
 export class Service implements HandlerContext {
+  // clock/ids son inyectables (R7): por defecto, los adaptadores reales
+  // del sistema, para que `new Service(db, actor, demo)` siga funcionando
+  // sin cambios en el resto del código. Una prueba que necesite una hora o
+  // un id determinista pasa un tercer/cuarto argumento con un doble.
   constructor(
     public db: SqlDatabase,
     public actor: Actor,
     public demo: number,
+    public clock: Clock = systemClock,
+    public ids: IdGenerator = systemIds,
   ) {}
   stmt(sql: string, args: unknown[] = []) {
     return this.db.prepare(sql).bind(...args);
@@ -110,7 +116,7 @@ export class Service implements HandlerContext {
         this.actor.id,
         action,
         detail,
-        now(),
+        this.clock.now(),
       ],
     );
   }
@@ -222,7 +228,7 @@ export class Service implements HandlerContext {
     }
     if (params.get("overdue") === "1") {
       sql += " AND t.due_at<? AND t.status NOT IN ('resuelto','cerrado')";
-      args.push(now());
+      args.push(this.clock.now());
     }
     const page = Math.max(
       1,
@@ -375,7 +381,7 @@ export class Service implements HandlerContext {
     const f = this.ticketFilter();
     const summary = await this.one(
       `SELECT COUNT(*) total,SUM(CASE WHEN t.status NOT IN ('resuelto','cerrado') THEN 1 ELSE 0 END) open,SUM(CASE WHEN t.status='en_atencion' THEN 1 ELSE 0 END) working,SUM(CASE WHEN t.status IN ('resuelto','cerrado') THEN 1 ELSE 0 END) resolved,SUM(CASE WHEN t.status NOT IN ('resuelto','cerrado') AND t.due_at<? THEN 1 ELSE 0 END) overdue FROM tickets t WHERE ${f.sql}`,
-      [now(), ...f.args],
+      [this.clock.now(), ...f.args],
     );
     const assets = await this.one(
       "SELECT COUNT(*) total,SUM(CASE WHEN status='operativo' THEN 1 ELSE 0 END) operational FROM assets WHERE demo=?",
