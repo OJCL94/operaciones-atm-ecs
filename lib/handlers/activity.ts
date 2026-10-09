@@ -2,7 +2,6 @@
 // comportamiento original del caso "activity.save" dentro de Service.execute.
 // Ningún criterio de autorización, validación ni persistencia fue modificado.
 import { z } from "zod";
-import { uuid } from "../clock";
 import { actorContext } from "./context";
 import { ensure, isManager } from "../domain";
 import type { HandlerContext, ActionResult } from "../types";
@@ -77,7 +76,7 @@ export async function activitySave(
     );
     return { id: p.id };
   }
-  const actid = uuid();
+  const actid = svc.ids.uuid();
   await svc.create(
     "activities",
     { id: actid, demo: d, ...values, created_at: t },

@@ -2,7 +2,6 @@
 // comportamiento original del caso "resource.require" dentro de Service.execute.
 // Ningún criterio de autorización, validación ni persistencia fue modificado.
 import { z } from "zod";
-import { uuid } from "../clock";
 import { actorContext } from "./context";
 import { ensure, isManager } from "../domain";
 import type { HandlerContext, ActionResult } from "../types";
@@ -28,7 +27,7 @@ export async function resourceRequire(
     ["pendiente", "planificada"].includes(act.status),
     "Define recursos antes de iniciar la actividad.",
   );
-  const rid = uuid();
+  const rid = svc.ids.uuid();
   await svc.create(
     "resource_requirements",
     { id: rid, demo: d, ...p },
@@ -56,7 +55,7 @@ export async function resourceAllocate(
     ["pendiente", "planificada"].includes(act.status),
     "La actividad ya comenzó o finalizó.",
   );
-  const allocation = uuid();
+  const allocation = svc.ids.uuid();
   const out = await svc.db.batch([
     svc.stmt(
       "INSERT INTO resource_allocations(id,requirement_id,quantity,allocated_at,actor_id,note) SELECT ?,?,?,?,?,? WHERE COALESCE((SELECT SUM(quantity) FROM resource_allocations WHERE requirement_id=?),0)+? <= (SELECT quantity FROM resource_requirements WHERE id=?)",

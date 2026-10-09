@@ -2,7 +2,6 @@
 // comportamiento original del caso "member.save" dentro de Service.execute.
 // Ningún criterio de autorización, validación ni persistencia fue modificado.
 import { z } from "zod";
-import { uuid } from "../clock";
 import { actorContext } from "./context";
 import { ensure, isManager } from "../domain";
 import type { HandlerContext, ActionResult } from "../types";
@@ -61,7 +60,7 @@ export async function memberSave(
     );
     return { id: p.id };
   }
-  const mid = uuid();
+  const mid = svc.ids.uuid();
   await svc.create(
     "members",
     {

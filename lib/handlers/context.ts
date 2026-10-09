@@ -6,9 +6,8 @@
 //
 // jscpd lo detectó como la causa principal del aumento de duplicación
 // textual medido después de R1 (0,26 % -> 1,17 %; ver el informe, 5.1.2).
-import { now } from "../clock";
 import type { HandlerContext } from "../types";
 
 export function actorContext(svc: HandlerContext) {
-  return { a: svc.actor, d: svc.demo, t: now() };
+  return { a: svc.actor, d: svc.demo, t: svc.clock.now() };
 }

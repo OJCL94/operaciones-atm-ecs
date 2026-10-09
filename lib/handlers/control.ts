@@ -2,7 +2,6 @@
 // comportamiento original del caso "control.create" dentro de Service.execute.
 // Ningún criterio de autorización, validación ni persistencia fue modificado.
 import { z } from "zod";
-import { uuid } from "../clock";
 import { actorContext } from "./context";
 import { ensure, isManager } from "../domain";
 import type { HandlerContext, ActionResult } from "../types";
@@ -26,7 +25,7 @@ export async function controlCreate(
     .parse(input);
   await svc.entity("activities", p.activity_id);
   await svc.validAssignee(p.owner_id);
-  const cid = uuid();
+  const cid = svc.ids.uuid();
   await svc.create(
     "controls",
     { id: cid, demo: d, ...p, created_at: t },
@@ -93,7 +92,7 @@ export async function goalCreate(
     })
     .parse(input);
   ensure(p.end_at >= p.start_at, "Revisa el período de la meta.");
-  const gid = uuid();
+  const gid = svc.ids.uuid();
   await svc.create(
     "goals",
     { id: gid, demo: d, ...p, created_at: t },
