@@ -65,7 +65,7 @@ try {
         .all(),
     );
   } else if (action === "backup") {
-    const backupDir = process.env.BACKUP_DIR ?? "backups";
+    const backupDir = config.backupDir;
     fs.mkdirSync(backupDir, { recursive: true });
     const target = path.resolve(
       backupDir,
