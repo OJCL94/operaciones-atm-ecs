@@ -115,7 +115,7 @@ function context() {
       }
     },
   };
-  const svc = (id = "admin", demo = 0, overrides = {}) =>
+  const svc = (id = "admin", demo = 0, overrides = {}, clock, ids) =>
     new Service(
       adapter,
       {
@@ -124,6 +124,8 @@ function context() {
         ...overrides,
       },
       demo,
+      clock,
+      ids,
     );
   const row = (table, id) =>
     db.prepare(`SELECT * FROM ${table} WHERE id=?`).get(id);
@@ -1891,6 +1893,58 @@ const historicalRange = [
     assert.equal(metric(r, "categoria").denominator, 1);
     assert.equal(metric(r, "categoria").value, 100);
   });
+  await test(
+    "50 Clock/IdGenerator inyectados fijan hora e id sin tocar el reloj global (R7)",
+    async () => {
+      // Las pruebas 1-49 fingen el tiempo parcheando `global.Date` (ver
+      // ClockDate más arriba): una necesidad real porque, antes de R7,
+      // lib/service.ts y lib/handlers/* llamaban a `now()`/`uuid()`
+      // importadas directamente, sin forma de sustituirlas salvo
+      // interceptando el reloj del sistema entero. Esta prueba usa el
+      // puerto Clock/IdGenerator inyectado por el propio constructor de
+      // Service (lib/clock.ts) y no toca `global.Date` en ningún momento:
+      // demuestra que la capa de dominio ya no tiene esa dependencia
+      // oculta.
+      const c = context();
+      const fixedClock = { now: () => "2030-05-01T12:00:00.000Z" };
+      let n = 0;
+      const sequentialIds = { uuid: () => "fixture-id-" + ++n };
+      const aid = await asset(c, {}, 0);
+      const { id: tid } = await c
+        .svc("requester", 0, {}, fixedClock, sequentialIds)
+        .execute("ticket.create", {
+          asset_id: aid,
+          title: "Pantalla sin respuesta",
+          description: "El cajero no responde al tacto.",
+          category: "Hardware",
+          priority: "media",
+        });
+      assert.equal(tid, "fixture-id-1");
+      const ticketRow = c.row("tickets", tid);
+      assert.equal(ticketRow.created_at, "2030-05-01T12:00:00.000Z");
+      assert.equal(ticketRow.updated_at, "2030-05-01T12:00:00.000Z");
+      const ev = c.db
+        .prepare(
+          "SELECT created_at FROM events WHERE entity_id=? ORDER BY id DESC LIMIT 1",
+        )
+        .get(tid);
+      assert.equal(ev.created_at, "2030-05-01T12:00:00.000Z");
+      // Sin inyección, la fábrica svc() de este archivo usa los
+      // adaptadores por defecto del sistema (systemClock/systemIds):
+      // sigue funcionando igual que antes de R7.
+      const { id: tid2 } = await c
+        .svc("requester")
+        .execute("ticket.create", {
+          asset_id: aid,
+          title: "Segundo ticket, reloj real",
+          description: "Confirma que el valor por defecto sigue activo.",
+          category: "Hardware",
+          priority: "media",
+        });
+      assert.notEqual(tid2, "fixture-id-1");
+      assert.notEqual(c.row("tickets", tid2).created_at, undefined);
+    },
+  );
   global.Date = RealDate;
   const summary = {
     executed_at: new RealDate().toISOString(),
