@@ -60,7 +60,12 @@ comparación de salida exacta entre el código original y el refactorizado.
 
 ### Corregido
 - `tsc --noEmit` ya no sale en silencio sin revisar ningún archivo
-  (`ignoreDeprecations: "6.0"` + `vite/client` en `tsconfig.json`).
+  (`ignoreDeprecations: "5.0"` + `vite/client` en `tsconfig.json`).
+- `ignoreDeprecations: "6.0"` (el valor usado en el primer intento de este
+  arreglo) no es un valor válido para TypeScript 5.9.3 y hace que
+  `tsc --noEmit` — y por lo tanto `npm run build` — fallen con
+  `TS5103: Invalid value for '--ignoreDeprecations'`. El valor correcto
+  para esta versión de TypeScript es `"5.0"`.
 
 ## [1.0.0] — v0.0-antes (línea base)
 
